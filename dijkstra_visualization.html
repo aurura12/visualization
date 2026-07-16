@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dijkstra 算法可视化</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --accent: #3db3d8;
+      --button-bg: #ffffff;
+      --button-border: #d1d5db;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --node: #ffffff;
+      --node-line: #111827;
+      --active: #f59e0b;
+      --settled: #0ea5e9;
+      --edge-active: #f59e0b;
+      --path: #16a34a;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      padding: 20px 24px 28px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .head {
+      margin-bottom: 12px;
+    }
+
+    .head h1 {
+      margin: 0;
+      font-size: clamp(30px, 3.3vw, 42px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .head p {
+      margin: 10px 0 0;
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--line);
+      margin: 18px 0 22px;
+    }
+
+    .info-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 18px 22px 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-card::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: -1px;
+      bottom: -1px;
+      width: 4px;
+      background: var(--accent);
+    }
+
+    .info-card h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      font-weight: 500;
+    }
+
+    .info-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 22px;
+      margin-bottom: 18px;
+    }
+
+    .control h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      font-weight: 400;
+      text-align: center;
+    }
+
+    .control .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .button-stack {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      max-width: 160px;
+    }
+
+    button,
+    select {
+      appearance: none;
+      border: 1px solid var(--button-border);
+      background: var(--button-bg);
+      color: #2563eb;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    button {
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    button:hover,
+    select:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .slider-wrap,
+    .select-wrap {
+      width: 100%;
+      max-width: 220px;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f8b84e;
+    }
+
+    .slider-value,
+    .select-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 4px 0 16px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 12px 10px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .stat .label {
+      font-size: 15px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(380px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .plot-shell {
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      aspect-ratio: 1 / 1;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .side-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px 14px 10px;
+      min-height: 100%;
+    }
+
+    .side-panel h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .step-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      min-height: 52px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 10px;
+    }
+
+    .distance-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .distance-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      background: #f9fafb;
+      border: 1px solid #eef2f7;
+      font-size: 13px;
+    }
+
+    .distance-item.active {
+      border-color: #fcd34d;
+      background: #fffbeb;
+    }
+
+    .distance-item.settled {
+      border-color: #bae6fd;
+      background: #f0f9ff;
+    }
+
+    .code-title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .code-block {
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      padding: 8px 0;
+      overflow: hidden;
+    }
+
+    .pseudo {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+
+    .pseudo-line {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
+      background: #f9fafb;
+      border-left: 3px solid transparent;
+    }
+
+    .pseudo-line.active {
+      background: #fff7ed;
+      border-left-color: #fdba74;
+    }
+
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .line-code {
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid #9ca3af;
+      background: #fff;
+    }
+
+    .legend-swatch.active {
+      background: var(--active);
+      border-color: #d97706;
+    }
+
+    .legend-swatch.settled {
+      background: var(--settled);
+      border-color: #0284c7;
+    }
+
+    .legend-swatch.path {
+      background: var(--path);
+      border-color: #15803d;
+    }
+
+    @media (max-width: 980px) {
+      body { padding: 18px 16px 24px; }
+      .controls,
+      .stats,
+      .main {
+        grid-template-columns: 1fr;
+      }
+      .control h3 {
+        text-align: left;
+      }
+      .control .content {
+        align-items: stretch;
+      }
+      .button-stack,
+      .slider-wrap,
+      .select-wrap,
+      .input-wrap {
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <h1>Dijkstra 算法可视化</h1>
+      <p>观察“选取当前最近顶点并松弛相邻边”的过程。</p>
+    </header>
+
+    <div class="rule"></div>
+
+    <section class="info-card">
+      <h2>说明</h2>
+      <p>从起点出发，算法每一步都会从“未确定最短路”的顶点中选出当前距离最小的一个，然后尝试更新它相邻顶点的距离。单步执行时可以清楚看到每次松弛带来的变化。</p>
+    </section>
+
+    <section class="controls">
+      <div class="control">
+        <h3>节点数</h3>
+        <div class="content">
+          <div class="input-wrap">
+            <input id="nodeCountInput" type="number" min="4" max="10" step="1" value="7" />
+            <div class="slider-value">建议范围 4 - 10</div>
+            <button id="randomizeButton" type="button">随机生成</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>起点</h3>
+        <div class="content">
+          <div class="select-wrap">
+            <select id="sourceSelect"></select>
+            <div id="sourceValue" class="select-value">A</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>操作</h3>
+        <div class="content">
+          <div class="button-stack">
+            <button id="toggleRun" type="button">开始</button>
+            <button id="stepButton" type="button">单步</button>
+            <button id="resetButton" type="button">重置</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">当前顶点</div>
+        <div id="currentNodeStat" class="value">A</div>
+      </div>
+      <div class="stat">
+        <div class="label">已确定顶点</div>
+        <div id="settledCountStat" class="value">0 / 7</div>
+      </div>
+      <div class="stat">
+        <div class="label">当前轮次</div>
+        <div id="stepCountStat" class="value">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">状态</div>
+        <div id="statusStat" class="value">未开始</div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="plot-shell">
+        <svg id="graphSvg" viewBox="0 0 660 660" aria-label="Dijkstra graph"></svg>
+      </div>
+
+      <aside class="side-panel">
+        <h3>过程说明</h3>
+        <div id="stepText" class="step-text"></div>
+        <h3 class="code-title">Python 代码</h3>
+        <div class="code-block">
+          <div id="pseudoList" class="pseudo"></div>
+        </div>
+        <h3>距离表</h3>
+        <div id="distanceList" class="distance-list"></div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch"></span>未确定</span>
+          <span class="legend-item"><span class="legend-swatch active"></span>当前顶点</span>
+          <span class="legend-item"><span class="legend-swatch settled"></span>已确定</span>
+          <span class="legend-item"><span class="legend-swatch path"></span>最短路树</span>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      function labelForIndex(index) {
+        const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        return index < labels.length ? labels[index] : `N${index + 1}`;
+      }
+
+      function makeGraph(count) {
+        const nodes = Array.from({ length: count }, (_, index) => {
+          const angle = (-Math.PI / 2) + (Math.PI * 2 * index / count);
+          const radius = count <= 6 ? 220 : 235;
+          return {
+            id: labelForIndex(index),
+            x: 330 + Math.cos(angle) * radius,
+            y: 330 + Math.sin(angle) * radius
+          };
+        });
+
+        const edgeSet = new Set();
+        const edges = [];
+
+        function addEdge(from, to) {
+          const key = [from, to].sort().join("-");
+          if (edgeSet.has(key)) return;
+          edgeSet.add(key);
+          edges.push([from, to, 1 + Math.floor(Math.random() * 9)]);
+        }
+
+        for (let i = 1; i < nodes.length; i += 1) {
+          const parent = Math.floor(Math.random() * i);
+          addEdge(nodes[parent].id, nodes[i].id);
+        }
+
+        const completeEdgeCount = (count * (count - 1)) / 2;
+        const targetEdges = Math.min(completeEdgeCount, Math.max(count + 2, Math.floor(completeEdgeCount * 0.6)));
+        let attempts = 0;
+        while (edges.length < targetEdges && attempts < completeEdgeCount * 6) {
+          const a = Math.floor(Math.random() * count);
+          let b = Math.floor(Math.random() * count);
+          if (a === b) {
+            attempts += 1;
+            continue;
+          }
+          while (b === a) b = Math.floor(Math.random() * count);
+          const before = edges.length;
+          addEdge(nodes[a].id, nodes[b].id);
+          if (edges.length === before) {
+            attempts += 1;
+          }
+        }
+
+        const adjacency = new Map(nodes.map((node) => [node.id, []]));
+        const edgeMap = new Map();
+        edges.forEach(([from, to, weight], index) => {
+          const key = [from, to].sort().join("-");
+          const edge = { id: key, from, to, weight, index };
+          adjacency.get(from).push({ to, weight, edgeId: key });
+          adjacency.get(to).push({ to: from, weight, edgeId: key });
+          edgeMap.set(key, edge);
+        });
+
+        return { nodes, edges, adjacency, edgeMap };
+      }
+
+      const svg = document.getElementById("graphSvg");
+      const nodeCountInput = document.getElementById("nodeCountInput");
+      const randomizeButton = document.getElementById("randomizeButton");
+      const toggleRunButton = document.getElementById("toggleRun");
+      const stepButton = document.getElementById("stepButton");
+      const resetButton = document.getElementById("resetButton");
+      const sourceSelect = document.getElementById("sourceSelect");
+      const sourceValue = document.getElementById("sourceValue");
+      const currentNodeStat = document.getElementById("currentNodeStat");
+      const settledCountStat = document.getElementById("settledCountStat");
+      const stepCountStat = document.getElementById("stepCountStat");
+      const statusStat = document.getElementById("statusStat");
+      const stepText = document.getElementById("stepText");
+      const distanceList = document.getElementById("distanceList");
+      const pseudoList = document.getElementById("pseudoList");
+
+      const pythonCode = [
+        "def dijkstra(graph, start):",
+        "    dist = {v: float(\"inf\") for v in graph}",
+        "    prev = {v: None for v in graph}",
+        "    dist[start] = 0",
+        "    while unvisited:",
+        "        current = min(unvisited, key=lambda v: dist[v])",
+        "        for neighbor, weight in graph[current]:",
+        "            if dist[current] + weight < dist[neighbor]:",
+        "                dist[neighbor] = dist[current] + weight",
+        "                prev[neighbor] = current"
+      ];
+
+      const AUTO_DELAY = 780;
+
+      const state = {
+        graph: makeGraph(7),
+        source: "A",
+        running: false,
+        timer: null,
+        distances: {},
+        previous: {},
+        settled: new Set(),
+        current: null,
+        stepCount: 0,
+        stepMessage: "请选择起点后开始。",
+        highlightedEdges: new Set(),
+        activeLine: 3
+      };
+
+      function makeSvgElement(tag, attrs) {
+        const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, String(value)));
+        return el;
+      }
+
+      function refreshSourceOptions() {
+        sourceSelect.innerHTML = "";
+        state.graph.nodes.forEach((node) => {
+          const option = document.createElement("option");
+          option.value = node.id;
+          option.textContent = node.id;
+          sourceSelect.appendChild(option);
+        });
+        if (!state.graph.nodes.some((node) => node.id === state.source)) {
+          state.source = state.graph.nodes[0].id;
+        }
+        sourceSelect.value = state.source;
+        sourceValue.textContent = state.source;
+      }
+
+      function generateRandomGraph() {
+        const count = Math.max(4, Math.min(10, Number(nodeCountInput.value) || 7));
+        nodeCountInput.value = String(count);
+        state.graph = makeGraph(count);
+        state.source = state.graph.nodes[0].id;
+        refreshSourceOptions();
+        resetAlgorithm();
+      }
+
+      function resetAlgorithm() {
+        state.running = false;
+        stopTimer();
+        state.distances = {};
+        state.previous = {};
+        state.settled = new Set();
+        state.current = null;
+        state.stepCount = 0;
+        state.stepMessage = `起点设为 ${state.source}，初始距离为 0，其余顶点为 ∞。`;
+        state.highlightedEdges = new Set();
+        state.activeLine = 3;
+
+        state.graph.nodes.forEach((node) => {
+          state.distances[node.id] = node.id === state.source ? 0 : Infinity;
+          state.previous[node.id] = null;
+        });
+
+        updateStats();
+        render();
+      }
+
+      function getNextNode() {
+        let candidate = null;
+        let bestDistance = Infinity;
+
+        state.graph.nodes.forEach((node) => {
+          if (state.settled.has(node.id)) {
+            return;
+          }
+          const distance = state.distances[node.id];
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            candidate = node.id;
+          }
+        });
+
+        return candidate;
+      }
+
+      function stepAlgorithm() {
+        const nextNode = getNextNode();
+        state.highlightedEdges = new Set();
+
+        if (!nextNode || state.distances[nextNode] === Infinity) {
+          state.current = null;
+          state.running = false;
+          stopTimer();
+          state.stepMessage = "所有可达顶点都已完成，算法结束。";
+          state.activeLine = 4;
+          updateStats();
+          render();
+          return;
+        }
+
+        state.current = nextNode;
+        state.settled.add(nextNode);
+        state.stepCount += 1;
+        state.activeLine = 5;
+
+        const updates = [];
+        state.graph.adjacency.get(nextNode).forEach(({ to, weight, edgeId }) => {
+          if (state.settled.has(to)) {
+            return;
+          }
+          const candidate = state.distances[nextNode] + weight;
+          if (candidate < state.distances[to]) {
+            const oldText = Number.isFinite(state.distances[to]) ? state.distances[to] : "∞";
+            state.distances[to] = candidate;
+            state.previous[to] = nextNode;
+            state.highlightedEdges.add(edgeId);
+            state.activeLine = 8;
+            updates.push(`${to}: ${oldText} → ${candidate}`);
+          }
+        });
+
+        if (updates.length === 0) {
+          state.activeLine = 6;
+          state.stepMessage = `第 ${state.stepCount} 步：选中顶点 ${nextNode}，没有产生更短的路径更新。`;
+        } else {
+          state.stepMessage = `第 ${state.stepCount} 步：选中顶点 ${nextNode}，更新 ${updates.join("，")}。`;
+        }
+
+        if (state.settled.size === state.graph.nodes.length) {
+          state.running = false;
+          stopTimer();
+          state.stepMessage += " 所有顶点都已确定最短距离。";
+        }
+
+        updateStats();
+        render();
+      }
+
+      function updateStats() {
+        currentNodeStat.textContent = state.current || "-";
+        settledCountStat.textContent = `${state.settled.size} / ${state.graph.nodes.length}`;
+        stepCountStat.textContent = String(state.stepCount);
+        statusStat.textContent = state.running ? "自动播放" : (state.stepCount === 0 ? "未开始" : "暂停");
+        toggleRunButton.textContent = state.running ? "暂停" : "开始";
+        stepText.textContent = state.stepMessage;
+        renderPseudo(state.activeLine);
+      }
+
+      function getNodeById(id) {
+        return state.graph.nodes.find((node) => node.id === id);
+      }
+
+      function isPathEdge(edge) {
+        return state.previous[edge.to] === edge.from || state.previous[edge.from] === edge.to;
+      }
+
+      function render() {
+        svg.innerHTML = "";
+
+        state.graph.edges.forEach(([from, to, weight]) => {
+          const start = getNodeById(from);
+          const end = getNodeById(to);
+          const edgeId = [from, to].sort().join("-");
+          const line = makeSvgElement("line", {
+            x1: start.x,
+            y1: start.y,
+            x2: end.x,
+            y2: end.y,
+            stroke: state.highlightedEdges.has(edgeId) ? "#f59e0b" : (isPathEdge(state.graph.edgeMap.get(edgeId)) ? "#16a34a" : "#9ca3af"),
+            "stroke-width": state.highlightedEdges.has(edgeId) || isPathEdge(state.graph.edgeMap.get(edgeId)) ? 4 : 2.4
+          });
+          svg.appendChild(line);
+
+          const labelX = (start.x + end.x) / 2;
+          const labelY = (start.y + end.y) / 2;
+          const labelBg = makeSvgElement("rect", {
+            x: labelX - 13,
+            y: labelY - 14,
+            width: 26,
+            height: 20,
+            rx: 4,
+            fill: "#ffffff"
+          });
+          const label = makeSvgElement("text", {
+            x: labelX,
+            y: labelY,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            "font-size": "14",
+            fill: "#111827"
+          });
+          label.textContent = String(weight);
+          svg.appendChild(labelBg);
+          svg.appendChild(label);
+        });
+
+        state.graph.nodes.forEach((node) => {
+          const isCurrent = state.current === node.id;
+          const isSettled = state.settled.has(node.id);
+          const circle = makeSvgElement("circle", {
+            cx: node.x,
+            cy: node.y,
+            r: 26,
+            fill: isCurrent ? "#fef3c7" : (isSettled ? "#e0f2fe" : "#ffffff"),
+            stroke: isCurrent ? "#d97706" : (isSettled ? "#0284c7" : "#111827"),
+            "stroke-width": isCurrent || isSettled ? 3 : 2
+          });
+          const title = makeSvgElement("text", {
+            x: node.x,
+            y: node.y - 6,
+            "text-anchor": "middle",
+            "font-size": "16",
+            "font-weight": "700",
+            fill: "#111827"
+          });
+          title.textContent = node.id;
+          const distance = makeSvgElement("text", {
+            x: node.x,
+            y: node.y + 13,
+            "text-anchor": "middle",
+            "font-size": "12",
+            fill: "#4b5563"
+          });
+          const distanceValue = state.distances[node.id];
+          distance.textContent = Number.isFinite(distanceValue) ? distanceValue : "∞";
+          svg.appendChild(circle);
+          svg.appendChild(title);
+          svg.appendChild(distance);
+        });
+
+        renderDistanceList();
+      }
+
+      function renderPseudo(activeLine) {
+        pseudoList.innerHTML = "";
+        pythonCode.forEach((line, index) => {
+          const item = document.createElement("div");
+          item.className = "pseudo-line";
+          if (index === activeLine) {
+            item.classList.add("active");
+          }
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          item.append(number, code);
+          pseudoList.appendChild(item);
+        });
+      }
+
+      function renderDistanceList() {
+        distanceList.innerHTML = "";
+        state.graph.nodes.forEach((node) => {
+          const item = document.createElement("div");
+          item.className = "distance-item";
+          if (state.current === node.id) {
+            item.classList.add("active");
+          } else if (state.settled.has(node.id)) {
+            item.classList.add("settled");
+          }
+          const predecessor = state.previous[node.id] ? ` ← ${state.previous[node.id]}` : "";
+          const left = document.createElement("span");
+          left.textContent = `${node.id}${predecessor}`;
+          const right = document.createElement("strong");
+          right.textContent = Number.isFinite(state.distances[node.id]) ? String(state.distances[node.id]) : "∞";
+          item.appendChild(left);
+          item.appendChild(right);
+          distanceList.appendChild(item);
+        });
+      }
+
+      function stopTimer() {
+        if (state.timer !== null) {
+          clearTimeout(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function scheduleNextStep() {
+        stopTimer();
+        if (!state.running) {
+          return;
+        }
+        state.timer = setTimeout(() => {
+          stepAlgorithm();
+          if (state.running) {
+            scheduleNextStep();
+          }
+        }, AUTO_DELAY);
+      }
+
+      toggleRunButton.addEventListener("click", () => {
+        state.running = !state.running;
+        if (state.running) {
+          if (state.stepCount === 0 && state.current === null) {
+            updateStats();
+          }
+          scheduleNextStep();
+        } else {
+          stopTimer();
+        }
+        updateStats();
+      });
+
+      stepButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        stepAlgorithm();
+      });
+
+      resetButton.addEventListener("click", () => {
+        resetAlgorithm();
+      });
+
+      randomizeButton.addEventListener("click", () => {
+        generateRandomGraph();
+      });
+
+      sourceSelect.addEventListener("change", () => {
+        state.source = sourceSelect.value;
+        sourceValue.textContent = state.source;
+        resetAlgorithm();
+      });
+
+      nodeCountInput.addEventListener("change", () => {
+        const count = Math.max(4, Math.min(10, Number(nodeCountInput.value) || 7));
+        nodeCountInput.value = String(count);
+      });
+
+      refreshSourceOptions();
+      resetAlgorithm();
+    })();
+  </script>
+</body>
+</html>

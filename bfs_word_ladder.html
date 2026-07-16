@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BFS 词梯图可视化</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --accent: #3db3d8;
+      --button-bg: #ffffff;
+      --button-border: #d1d5db;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --node: #ffffff;
+      --node-visited: #e0f2fe;
+      --node-queued: #fef3c7;
+      --node-current: #fed7aa;
+      --node-target: #fee2e2;
+      --node-path: #dcfce7;
+      --edge: #9ca3af;
+      --edge-active: #f59e0b;
+      --edge-path: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      padding: 20px 24px 28px;
+    }
+
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    .head {
+      margin-bottom: 12px;
+    }
+
+    .head h1 {
+      margin: 0;
+      font-size: clamp(30px, 3.3vw, 42px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .head p {
+      margin: 10px 0 0;
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--line);
+      margin: 18px 0 22px;
+    }
+
+    .info-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 18px 22px 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-card::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: -1px;
+      bottom: -1px;
+      width: 4px;
+      background: var(--accent);
+    }
+
+    .info-card h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      font-weight: 500;
+    }
+
+    .info-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1.2fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: start;
+    }
+
+    .control h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 400;
+      text-align: center;
+    }
+
+    .control .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .button-stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      max-width: 200px;
+    }
+
+    button,
+    select {
+      appearance: none;
+      border: 1px solid var(--button-border);
+      background: var(--button-bg);
+      color: #2563eb;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    button {
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    button:hover,
+    select:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .slider-wrap,
+    .select-wrap {
+      width: 100%;
+      max-width: 220px;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f8b84e;
+    }
+
+    .slider-value,
+    .select-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 4px 0 16px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 12px 10px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .stat .label {
+      font-size: 14px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 720px) minmax(250px, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .plot-shell {
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 8px;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .side-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .side-panel h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    .step-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      min-height: 88px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
+    .queue-box {
+      margin-bottom: 14px;
+    }
+
+    .queue-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+    }
+
+    .chip {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      font-size: 12px;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .path-box {
+      margin-bottom: 14px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .distance-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .distance-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      background: #f9fafb;
+      border: 1px solid #eef2f7;
+      font-size: 12px;
+    }
+
+    .distance-item.current {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+
+    .distance-item.visited {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+    }
+
+    .pseudo {
+      display: grid;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: #374151;
+    }
+
+    .pseudo-line {
+      padding: 6px 8px;
+      background: #f9fafb;
+      border: 1px solid #eef2f7;
+    }
+
+    .pseudo-line.active {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+
+    @media (max-width: 980px) {
+      body { padding: 18px 16px 24px; }
+      .controls,
+      .stats,
+      .main {
+        grid-template-columns: 1fr;
+      }
+      .control h3 {
+        text-align: left;
+      }
+      .control .content {
+        align-items: stretch;
+      }
+      .button-stack,
+      .slider-wrap,
+      .select-wrap {
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <h1>BFS 词梯图可视化</h1>
+      <p>观察队列如何按层推进，并找到最短单词变换路径。</p>
+    </header>
+
+    <div class="rule"></div>
+
+    <section class="info-card">
+      <h2>说明</h2>
+      <p>图中的每个节点是一个四字母单词；若两个单词只差一个字母，就连一条边。BFS 会从起点单词出发，用队列按层扩展，因此第一次到达目标单词时得到的一定是最短词梯。</p>
+    </section>
+
+    <section class="controls">
+      <div class="control">
+        <h3>起点</h3>
+        <div class="content">
+          <div class="select-wrap">
+            <select id="sourceSelect"></select>
+            <div id="sourceValue" class="select-value">fool</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>目标</h3>
+        <div class="content">
+          <div class="select-wrap">
+            <select id="targetSelect"></select>
+            <div id="targetValue" class="select-value">sage</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>每秒步数</h3>
+        <div class="content">
+          <div class="slider-wrap">
+            <input id="speedInput" type="range" min="1" max="4" step="1" value="1" />
+            <div id="speedValue" class="slider-value">1 步/秒</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>操作</h3>
+        <div class="content">
+          <div class="button-stack">
+            <button id="toggleRunButton" type="button">开始</button>
+            <button id="stepButton" type="button">单步</button>
+            <button id="resetButton" type="button">重置</button>
+            <button id="swapButton" type="button">交换起终点</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">当前节点</div>
+        <div id="currentStat" class="value">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">队列长度</div>
+        <div id="queueStat" class="value">1</div>
+      </div>
+      <div class="stat">
+        <div class="label">已访问节点</div>
+        <div id="visitedStat" class="value">1</div>
+      </div>
+      <div class="stat">
+        <div class="label">状态</div>
+        <div id="statusStat" class="value">未开始</div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="plot-shell">
+        <svg id="graphSvg" viewBox="0 0 720 520" aria-label="word ladder graph"></svg>
+      </div>
+
+      <aside class="side-panel">
+        <h3>过程说明</h3>
+        <div id="stepText" class="step-text"></div>
+
+        <div class="queue-box">
+          <h3>队列</h3>
+          <div id="queueChips" class="queue-chips"></div>
+        </div>
+
+        <div class="path-box">
+          <h3>当前最短词梯</h3>
+          <div id="pathText">尚未找到。</div>
+        </div>
+
+        <h3>访问表</h3>
+        <div id="distanceList" class="distance-list"></div>
+
+        <div id="pseudoList" class="pseudo"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const words = [
+        "fool", "pool", "cool", "tool", "toll", "poll", "pole", "pale", "sale", "sage",
+        "foil", "fail", "fall", "pall", "peal", "seal", "tall", "tale", "gale", "page"
+      ];
+
+      const pseudoLines = [
+        "把起点加入队列，并标记为已访问",
+        "取出队首节点作为当前节点",
+        "扫描当前节点的所有相邻单词",
+        "若相邻单词未访问，则入队并记录前驱"
+      ];
+
+      const sourceSelect = document.getElementById("sourceSelect");
+      const targetSelect = document.getElementById("targetSelect");
+      const sourceValue = document.getElementById("sourceValue");
+      const targetValue = document.getElementById("targetValue");
+      const speedInput = document.getElementById("speedInput");
+      const speedValue = document.getElementById("speedValue");
+      const toggleRunButton = document.getElementById("toggleRunButton");
+      const stepButton = document.getElementById("stepButton");
+      const resetButton = document.getElementById("resetButton");
+      const swapButton = document.getElementById("swapButton");
+      const currentStat = document.getElementById("currentStat");
+      const queueStat = document.getElementById("queueStat");
+      const visitedStat = document.getElementById("visitedStat");
+      const statusStat = document.getElementById("statusStat");
+      const graphSvg = document.getElementById("graphSvg");
+      const stepText = document.getElementById("stepText");
+      const queueChips = document.getElementById("queueChips");
+      const pathText = document.getElementById("pathText");
+      const distanceList = document.getElementById("distanceList");
+      const pseudoList = document.getElementById("pseudoList");
+
+      const state = {
+        source: "fool",
+        target: "sage",
+        adjacency: new Map(),
+        positions: new Map(),
+        queue: [],
+        visited: new Set(),
+        previous: {},
+        distance: {},
+        current: null,
+        running: false,
+        timer: null,
+        found: false,
+        finished: false,
+        stepCount: 0,
+        stepMessage: "",
+        highlightedEdges: new Set(),
+        activePseudo: 0
+      };
+
+      function differsByOne(a, b) {
+        let diff = 0;
+        for (let i = 0; i < a.length; i += 1) {
+          if (a[i] !== b[i]) diff += 1;
+          if (diff > 1) return false;
+        }
+        return diff === 1;
+      }
+
+      function buildGraph() {
+        state.adjacency = new Map(words.map((word) => [word, []]));
+        for (let i = 0; i < words.length; i += 1) {
+          for (let j = i + 1; j < words.length; j += 1) {
+            if (differsByOne(words[i], words[j])) {
+              state.adjacency.get(words[i]).push(words[j]);
+              state.adjacency.get(words[j]).push(words[i]);
+            }
+          }
+        }
+        for (const [word, neighbors] of state.adjacency.entries()) {
+          neighbors.sort();
+        }
+      }
+
+      function computeStaticLayout() {
+        const levelMap = new Map();
+        const visited = new Set([state.source]);
+        const queue = [state.source];
+        levelMap.set(state.source, 0);
+
+        while (queue.length) {
+          const current = queue.shift();
+          const level = levelMap.get(current);
+          for (const neighbor of state.adjacency.get(current)) {
+            if (!visited.has(neighbor)) {
+              visited.add(neighbor);
+              levelMap.set(neighbor, level + 1);
+              queue.push(neighbor);
+            }
+          }
+        }
+
+        const disconnected = words.filter((word) => !levelMap.has(word)).sort();
+        const levels = new Map();
+        for (const word of words) {
+          const level = levelMap.has(word) ? levelMap.get(word) : (Math.max(...levelMap.values()) + 1);
+          if (!levels.has(level)) levels.set(level, []);
+          levels.get(level).push(word);
+        }
+
+        const sortedLevels = [...levels.keys()].sort((a, b) => a - b);
+        const width = 720;
+        const height = 520;
+        const left = 70;
+        const right = 70;
+        const top = 60;
+        const bottom = 60;
+        const maxLevel = sortedLevels[sortedLevels.length - 1];
+
+        state.positions = new Map();
+        sortedLevels.forEach((level) => {
+          const entries = levels.get(level).slice().sort();
+          if (level === maxLevel && disconnected.length) {
+            entries.sort();
+          }
+          const x = sortedLevels.length === 1
+            ? width / 2
+            : left + (width - left - right) * (level / Math.max(1, maxLevel));
+          const verticalGap = (height - top - bottom) / Math.max(1, entries.length - 1);
+          entries.forEach((word, index) => {
+            const y = entries.length === 1 ? height / 2 : top + verticalGap * index;
+            state.positions.set(word, { x, y });
+          });
+        });
+      }
+
+      function initSelects() {
+        words.forEach((word) => {
+          const option1 = document.createElement("option");
+          option1.value = word;
+          option1.textContent = word;
+          sourceSelect.appendChild(option1);
+
+          const option2 = document.createElement("option");
+          option2.value = word;
+          option2.textContent = word;
+          targetSelect.appendChild(option2);
+        });
+        sourceSelect.value = state.source;
+        targetSelect.value = state.target;
+      }
+
+      function resetSearch() {
+        stopTimer();
+        state.running = false;
+        state.queue = [state.source];
+        state.visited = new Set([state.source]);
+        state.previous = {};
+        state.distance = {};
+        state.current = null;
+        state.found = state.source === state.target;
+        state.finished = state.source === state.target;
+        state.stepCount = 0;
+        state.highlightedEdges = new Set();
+        state.activePseudo = 0;
+
+        words.forEach((word) => {
+          state.previous[word] = null;
+          state.distance[word] = Infinity;
+        });
+        state.distance[state.source] = 0;
+
+        if (state.found) {
+          state.stepMessage = `起点和目标相同，词梯长度为 0。`;
+        } else {
+          state.stepMessage = `将起点 ${state.source} 放入队列，等待按层扩展。`;
+        }
+
+        computeStaticLayout();
+        updateTopLabels();
+        render();
+      }
+
+      function updateTopLabels() {
+        sourceValue.textContent = state.source;
+        targetValue.textContent = state.target;
+        speedValue.textContent = `${speedInput.value} 步/秒`;
+        toggleRunButton.textContent = state.running ? "暂停" : "开始";
+      }
+
+      function reconstructPath() {
+        if (!state.found) return [];
+        const path = [];
+        let current = state.target;
+        while (current) {
+          path.push(current);
+          current = state.previous[current];
+        }
+        return path.reverse();
+      }
+
+      function getPathEdges() {
+        const path = reconstructPath();
+        const edges = new Set();
+        for (let i = 0; i < path.length - 1; i += 1) {
+          edges.add([path[i], path[i + 1]].sort().join("-"));
+        }
+        return edges;
+      }
+
+      function stepSearch() {
+        if (state.finished) return;
+        if (state.queue.length === 0) {
+          state.finished = true;
+          state.stepMessage = `队列已空，未找到从 ${state.source} 到 ${state.target} 的词梯。`;
+          state.activePseudo = 1;
+          state.running = false;
+          stopTimer();
+          render();
+          return;
+        }
+
+        state.current = state.queue.shift();
+        state.stepCount += 1;
+        state.highlightedEdges = new Set();
+        state.activePseudo = 1;
+
+        if (state.current === state.target) {
+          state.found = true;
+          state.finished = true;
+          state.running = false;
+          stopTimer();
+          state.stepMessage = `取出目标单词 ${state.target}，BFS 完成。`;
+          render();
+          return;
+        }
+
+        const discovered = [];
+        state.activePseudo = 2;
+        for (const neighbor of state.adjacency.get(state.current)) {
+          if (!state.visited.has(neighbor)) {
+            state.activePseudo = 3;
+            state.visited.add(neighbor);
+            state.previous[neighbor] = state.current;
+            state.distance[neighbor] = state.distance[state.current] + 1;
+            state.queue.push(neighbor);
+            state.highlightedEdges.add([state.current, neighbor].sort().join("-"));
+            discovered.push(neighbor);
+            if (neighbor === state.target) {
+              state.found = true;
+              state.finished = true;
+            }
+          }
+        }
+
+        if (state.found) {
+          state.running = false;
+          stopTimer();
+          state.stepMessage = `扩展 ${state.current} 时首次发现目标 ${state.target}，最短词梯长度为 ${state.distance[state.target]}。`;
+        } else if (discovered.length === 0) {
+          state.stepMessage = `扩展 ${state.current}，没有发现新的单词，继续处理队列。`;
+        } else {
+          state.stepMessage = `扩展 ${state.current}，新发现 ${discovered.join("、")}，并依次加入队列。`;
+        }
+
+        render();
+      }
+
+      function render() {
+        updateTopLabels();
+        currentStat.textContent = state.current || "-";
+        queueStat.textContent = String(state.queue.length);
+        visitedStat.textContent = String(state.visited.size);
+        statusStat.textContent = state.finished
+          ? (state.found ? "已找到路径" : "搜索结束")
+          : (state.running ? "自动播放" : (state.stepCount === 0 ? "未开始" : "暂停"));
+        stepText.textContent = state.stepMessage;
+
+        renderQueue();
+        renderPath();
+        renderDistanceList();
+        renderPseudo();
+        renderGraph();
+      }
+
+      function renderQueue() {
+        queueChips.innerHTML = "";
+        if (state.queue.length === 0) {
+          const empty = document.createElement("span");
+          empty.className = "chip";
+          empty.textContent = "空";
+          queueChips.appendChild(empty);
+          return;
+        }
+        state.queue.forEach((word) => {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = word;
+          queueChips.appendChild(chip);
+        });
+      }
+
+      function renderPath() {
+        if (!state.found) {
+          pathText.textContent = "尚未找到。";
+          return;
+        }
+        const path = reconstructPath();
+        pathText.textContent = `${path.join(" → ")}（共 ${path.length - 1} 步）`;
+      }
+
+      function renderDistanceList() {
+        distanceList.innerHTML = "";
+        words.slice().sort().forEach((word) => {
+          const item = document.createElement("div");
+          item.className = "distance-item";
+          if (state.current === word) item.classList.add("current");
+          else if (state.visited.has(word)) item.classList.add("visited");
+
+          const left = document.createElement("span");
+          const prevText = state.previous[word] ? ` ← ${state.previous[word]}` : "";
+          left.textContent = `${word}${prevText}`;
+          const right = document.createElement("strong");
+          right.textContent = Number.isFinite(state.distance[word]) ? String(state.distance[word]) : "∞";
+          item.appendChild(left);
+          item.appendChild(right);
+          distanceList.appendChild(item);
+        });
+      }
+
+      function renderPseudo() {
+        pseudoList.innerHTML = "";
+        pseudoLines.forEach((line, index) => {
+          const el = document.createElement("div");
+          el.className = "pseudo-line";
+          if (index === state.activePseudo) el.classList.add("active");
+          el.textContent = line;
+          pseudoList.appendChild(el);
+        });
+      }
+
+      function renderGraph() {
+        graphSvg.innerHTML = "";
+        const pathEdges = getPathEdges();
+
+        const drawn = new Set();
+        for (const [word, neighbors] of state.adjacency.entries()) {
+          neighbors.forEach((neighbor) => {
+            const key = [word, neighbor].sort().join("-");
+            if (drawn.has(key)) return;
+            drawn.add(key);
+            const from = state.positions.get(word);
+            const to = state.positions.get(neighbor);
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", from.x);
+            line.setAttribute("y1", from.y);
+            line.setAttribute("x2", to.x);
+            line.setAttribute("y2", to.y);
+            line.setAttribute("stroke", state.highlightedEdges.has(key) ? "#f59e0b" : (pathEdges.has(key) ? "#16a34a" : "#9ca3af"));
+            line.setAttribute("stroke-width", state.highlightedEdges.has(key) || pathEdges.has(key) ? "4" : "2");
+            graphSvg.appendChild(line);
+          });
+        }
+
+        words.forEach((word) => {
+          const pos = state.positions.get(word);
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          let fill = "#ffffff";
+          let stroke = "#111827";
+          let strokeWidth = 2;
+
+          if (reconstructPath().includes(word)) {
+            fill = "#dcfce7";
+            stroke = "#15803d";
+            strokeWidth = 3;
+          }
+          if (state.visited.has(word)) {
+            fill = "#e0f2fe";
+            stroke = "#0284c7";
+          }
+          if (state.queue.includes(word)) {
+            fill = "#fef3c7";
+            stroke = "#d97706";
+          }
+          if (word === state.target) {
+            if (!state.visited.has(word) && !state.queue.includes(word)) {
+              fill = "#fee2e2";
+            }
+            stroke = "#dc2626";
+            strokeWidth = 3;
+          }
+          if (word === state.current) {
+            fill = "#fed7aa";
+            stroke = "#c2410c";
+            strokeWidth = 3;
+          }
+          if (word === state.source) {
+            strokeWidth = Math.max(strokeWidth, 3);
+          }
+
+          circle.setAttribute("cx", pos.x);
+          circle.setAttribute("cy", pos.y);
+          circle.setAttribute("r", 24);
+          circle.setAttribute("fill", fill);
+          circle.setAttribute("stroke", stroke);
+          circle.setAttribute("stroke-width", strokeWidth);
+          graphSvg.appendChild(circle);
+
+          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          label.setAttribute("x", pos.x);
+          label.setAttribute("y", pos.y + 4);
+          label.setAttribute("text-anchor", "middle");
+          label.setAttribute("font-size", "13");
+          label.setAttribute("font-weight", "700");
+          label.setAttribute("fill", "#111827");
+          label.textContent = word;
+          graphSvg.appendChild(label);
+        });
+      }
+
+      function stopTimer() {
+        if (state.timer !== null) {
+          clearTimeout(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function scheduleNext() {
+        stopTimer();
+        if (!state.running) return;
+        const delay = Math.max(220, Math.round(1000 / Number(speedInput.value)));
+        state.timer = setTimeout(() => {
+          stepSearch();
+          if (state.running && !state.finished) scheduleNext();
+        }, delay);
+      }
+
+      sourceSelect.addEventListener("change", () => {
+        state.source = sourceSelect.value;
+        if (state.source === state.target) {
+          targetSelect.value = state.source;
+          state.target = state.source;
+        }
+        resetSearch();
+      });
+
+      targetSelect.addEventListener("change", () => {
+        state.target = targetSelect.value;
+        resetSearch();
+      });
+
+      speedInput.addEventListener("input", () => {
+        updateTopLabels();
+        if (state.running) scheduleNext();
+      });
+
+      toggleRunButton.addEventListener("click", () => {
+        if (state.finished) {
+          resetSearch();
+        }
+        state.running = !state.running;
+        if (state.running) scheduleNext();
+        else stopTimer();
+        render();
+      });
+
+      stepButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        stepSearch();
+      });
+
+      resetButton.addEventListener("click", () => {
+        resetSearch();
+      });
+
+      swapButton.addEventListener("click", () => {
+        const temp = state.source;
+        state.source = state.target;
+        state.target = temp;
+        sourceSelect.value = state.source;
+        targetSelect.value = state.target;
+        resetSearch();
+      });
+
+      buildGraph();
+      initSelects();
+      resetSearch();
+    })();
+  </script>
+</body>
+</html>

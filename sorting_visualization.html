@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>排序算法可视化</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --accent: #3db3d8;
+      --button-bg: #ffffff;
+      --button-border: #d1d5db;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --bar: #93c5fd;
+      --bar-compare: #fbbf24;
+      --bar-swap: #f97316;
+      --bar-sorted: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      padding: 20px 24px 28px;
+    }
+
+    .page {
+      max-width: 1020px;
+      margin: 0 auto;
+    }
+
+    .head {
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+
+    .head h1 {
+      margin: 0;
+      font-size: clamp(30px, 3.3vw, 42px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .head p {
+      margin: 10px 0 0;
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--line);
+      margin: 18px 0 22px;
+    }
+
+    .info-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 18px 22px 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-card::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: -1px;
+      bottom: -1px;
+      width: 4px;
+      background: var(--accent);
+    }
+
+    .info-card h2 {
+      margin: 0 0 6px;
+      font-size: 19px;
+      font-weight: 500;
+    }
+
+    .info-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1.2fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: start;
+    }
+
+    .control h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 400;
+      text-align: center;
+    }
+
+    .control .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .button-stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      max-width: 200px;
+    }
+
+    button,
+    select {
+      appearance: none;
+      border: 1px solid var(--button-border);
+      background: var(--button-bg);
+      color: #2563eb;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    button {
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    button:hover,
+    select:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .slider-wrap,
+    .select-wrap {
+      width: 100%;
+      max-width: 220px;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f8b84e;
+    }
+
+    .slider-value,
+    .select-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 4px 0 16px;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 12px 10px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .stat .label {
+      font-size: 14px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(420px, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .plot-shell {
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 10px 12px 8px;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .array-strip {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+      min-height: 18px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .side-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px 14px 12px;
+    }
+
+    .side-panel h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    .step-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      min-height: 44px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 10px;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #94a3b8;
+      background: var(--bar);
+    }
+
+    .swatch.compare {
+      background: var(--bar-compare);
+      border-color: #d97706;
+    }
+
+    .swatch.swap {
+      background: var(--bar-swap);
+      border-color: #c2410c;
+    }
+
+    .swatch.sorted {
+      background: var(--bar-sorted);
+      border-color: #15803d;
+    }
+
+    .code-block {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      padding: 8px 0;
+      overflow: hidden;
+    }
+
+    .code-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .pseudo {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+
+    .pseudo-line {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
+      background: #f9fafb;
+      border-left: 3px solid transparent;
+    }
+
+    .pseudo-line.active {
+      background: #fff7ed;
+      border-left-color: #fdba74;
+    }
+
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .line-code {
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+
+    @media (max-width: 980px) {
+      body { padding: 18px 16px 24px; }
+      .controls,
+      .stats,
+      .main {
+        grid-template-columns: 1fr;
+      }
+      .control h3 {
+        text-align: left;
+      }
+      .control .content {
+        align-items: stretch;
+      }
+      .button-stack,
+      .slider-wrap,
+      .select-wrap {
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <h1>排序算法可视化</h1>
+      <p>比较不同排序算法在“比较、交换、写回”上的过程差异。</p>
+    </header>
+
+    <div class="rule"></div>
+
+    <section class="info-card">
+      <h2>说明</h2>
+      <p>选择算法后，可以单步执行或自动播放。柱形条代表数组元素，黄色表示当前比较，橙色表示发生交换或写回，绿色表示已经处于最终有序位置的元素。</p>
+    </section>
+
+    <section class="controls">
+      <div class="control">
+        <h3>算法</h3>
+        <div class="content">
+          <div class="select-wrap">
+            <select id="algorithmSelect">
+              <option value="bubble">冒泡排序</option>
+              <option value="selection">选择排序</option>
+              <option value="insertion">插入排序</option>
+              <option value="merge">归并排序</option>
+            </select>
+            <div id="algorithmValue" class="select-value">冒泡排序</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>数组规模</h3>
+        <div class="content">
+          <div class="slider-wrap">
+            <input id="sizeInput" type="range" min="6" max="18" step="1" value="10" />
+            <div id="sizeValue" class="slider-value">10</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>操作</h3>
+        <div class="content">
+          <div class="button-stack">
+            <button id="toggleRunButton" type="button">开始</button>
+            <button id="stepButton" type="button">单步</button>
+            <button id="shuffleButton" type="button">打乱</button>
+            <button id="resetButton" type="button">重置</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">当前步骤</div>
+        <div id="stepStat" class="value">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">比较次数</div>
+        <div id="compareStat" class="value">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">交换/写回</div>
+        <div id="swapStat" class="value">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">状态</div>
+        <div id="statusStat" class="value">未开始</div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="plot-shell">
+        <svg id="barsSvg" viewBox="0 0 720 420" aria-label="sorting bars"></svg>
+        <div id="arrayStrip" class="array-strip"></div>
+      </div>
+
+      <aside class="side-panel">
+        <h3>过程说明</h3>
+        <div id="stepText" class="step-text"></div>
+        <h3 class="code-title">Python 代码</h3>
+        <div class="code-block">
+          <div id="pseudoList" class="pseudo"></div>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch"></span>普通元素</span>
+          <span class="legend-item"><span class="swatch compare"></span>当前比较</span>
+          <span class="legend-item"><span class="swatch swap"></span>交换/写回</span>
+          <span class="legend-item"><span class="swatch sorted"></span>已确定有序</span>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const algorithmSelect = document.getElementById("algorithmSelect");
+      const algorithmValue = document.getElementById("algorithmValue");
+      const sizeInput = document.getElementById("sizeInput");
+      const sizeValue = document.getElementById("sizeValue");
+      const toggleRunButton = document.getElementById("toggleRunButton");
+      const stepButton = document.getElementById("stepButton");
+      const shuffleButton = document.getElementById("shuffleButton");
+      const resetButton = document.getElementById("resetButton");
+      const stepStat = document.getElementById("stepStat");
+      const compareStat = document.getElementById("compareStat");
+      const swapStat = document.getElementById("swapStat");
+      const statusStat = document.getElementById("statusStat");
+      const barsSvg = document.getElementById("barsSvg");
+      const arrayStrip = document.getElementById("arrayStrip");
+      const stepText = document.getElementById("stepText");
+      const pseudoList = document.getElementById("pseudoList");
+
+      const algorithmNames = {
+        bubble: "冒泡排序",
+        selection: "选择排序",
+        insertion: "插入排序",
+        merge: "归并排序"
+      };
+
+      const pythonCode = {
+        bubble: [
+          "for end in range(len(arr) - 1, 0, -1):",
+          "    for i in range(end):",
+          "        if arr[i] > arr[i + 1]:",
+          "            arr[i], arr[i + 1] = arr[i + 1], arr[i]"
+        ],
+        selection: [
+          "for i in range(len(arr) - 1):",
+          "    min_index = i",
+          "    for j in range(i + 1, len(arr)):",
+          "        if arr[j] < arr[min_index]:",
+          "            min_index = j",
+          "    arr[i], arr[min_index] = arr[min_index], arr[i]"
+        ],
+        insertion: [
+          "for i in range(1, len(arr)):",
+          "    j = i",
+          "    while j > 0 and arr[j - 1] > arr[j]:",
+          "        arr[j - 1], arr[j] = arr[j], arr[j - 1]",
+          "        j -= 1"
+        ],
+        merge: [
+          "def merge_sort(left, right):",
+          "    if left >= right:",
+          "        return",
+          "    merge_sort(left, mid); merge_sort(mid + 1, right)",
+          "    if aux[i] <= aux[j]: arr[k] = aux[i]",
+          "    else: arr[k] = aux[j]"
+        ]
+      };
+
+      const AUTO_DELAY = 420;
+
+      const state = {
+        data: [],
+        steps: [],
+        stepIndex: 0,
+        running: false,
+        timer: null
+      };
+
+      function randomArray(size) {
+        const arr = Array.from({ length: size }, (_, i) => 6 + i * 3);
+        for (let i = arr.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function makeStep({ array, compare = [], swap = [], sorted = [], compares = 0, swaps = 0, message, line }) {
+        return {
+          array: array.slice(),
+          compare: compare.slice(),
+          swap: swap.slice(),
+          sorted: sorted.slice(),
+          compares,
+          swaps,
+          message,
+          line
+        };
+      }
+
+      function buildBubbleSteps(input) {
+        const arr = input.slice();
+        const steps = [];
+        let compares = 0;
+        let swaps = 0;
+        steps.push(makeStep({ array: arr, message: "开始冒泡排序。", line: 0 }));
+
+        for (let end = arr.length - 1; end > 0; end -= 1) {
+          for (let i = 0; i < end; i += 1) {
+            compares += 1;
+            steps.push(makeStep({
+              array: arr,
+              compare: [i, i + 1],
+              sorted: Array.from({ length: arr.length - end - 1 }, (_, k) => arr.length - 1 - k),
+              compares,
+              swaps,
+              message: `比较位置 ${i} 和 ${i + 1}。`,
+              line: 1
+            }));
+            if (arr[i] > arr[i + 1]) {
+              [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+              swaps += 1;
+              steps.push(makeStep({
+                array: arr,
+                swap: [i, i + 1],
+                sorted: Array.from({ length: arr.length - end - 1 }, (_, k) => arr.length - 1 - k),
+                compares,
+                swaps,
+                message: `交换位置 ${i} 和 ${i + 1}。`,
+                line: 2
+              }));
+            }
+          }
+          steps.push(makeStep({
+            array: arr,
+            sorted: Array.from({ length: arr.length - end }, (_, k) => arr.length - 1 - k),
+            compares,
+            swaps,
+            message: `第 ${arr.length - end} 轮结束，位置 ${end} 已确定。`,
+            line: 0
+          }));
+        }
+
+        steps.push(makeStep({
+          array: arr,
+          sorted: arr.map((_, index) => index),
+          compares,
+          swaps,
+          message: "排序完成。",
+          line: 3
+        }));
+        return steps;
+      }
+
+      function buildSelectionSteps(input) {
+        const arr = input.slice();
+        const steps = [];
+        let compares = 0;
+        let swaps = 0;
+        steps.push(makeStep({ array: arr, message: "开始选择排序。", line: 0 }));
+
+        for (let i = 0; i < arr.length - 1; i += 1) {
+          let minIndex = i;
+          for (let j = i + 1; j < arr.length; j += 1) {
+            compares += 1;
+            steps.push(makeStep({
+              array: arr,
+              compare: [minIndex, j],
+              sorted: Array.from({ length: i }, (_, k) => k),
+              compares,
+              swaps,
+              message: `比较当前最小值位置 ${minIndex} 与位置 ${j}。`,
+              line: 2
+            }));
+            if (arr[j] < arr[minIndex]) {
+              minIndex = j;
+              steps.push(makeStep({
+                array: arr,
+                compare: [i, minIndex],
+                sorted: Array.from({ length: i }, (_, k) => k),
+                compares,
+                swaps,
+                message: `更新最小值位置为 ${minIndex}。`,
+                line: 4
+              }));
+            }
+          }
+          if (minIndex !== i) {
+            [arr[i], arr[minIndex]] = [arr[minIndex], arr[i]];
+            swaps += 1;
+            steps.push(makeStep({
+              array: arr,
+              swap: [i, minIndex],
+              sorted: Array.from({ length: i }, (_, k) => k),
+              compares,
+              swaps,
+              message: `把最小值交换到位置 ${i}。`,
+              line: 5
+            }));
+          }
+          steps.push(makeStep({
+            array: arr,
+            sorted: Array.from({ length: i + 1 }, (_, k) => k),
+            compares,
+            swaps,
+            message: `位置 ${i} 已确定。`,
+            line: 0
+          }));
+        }
+
+        steps.push(makeStep({
+          array: arr,
+          sorted: arr.map((_, index) => index),
+          compares,
+          swaps,
+          message: "排序完成。",
+          line: 3
+        }));
+        return steps;
+      }
+
+      function buildInsertionSteps(input) {
+        const arr = input.slice();
+        const steps = [];
+        let compares = 0;
+        let swaps = 0;
+        steps.push(makeStep({ array: arr, sorted: [0], message: "开始插入排序。", line: 0 }));
+
+        for (let i = 1; i < arr.length; i += 1) {
+          let j = i;
+          steps.push(makeStep({
+            array: arr,
+            compare: [i],
+            sorted: Array.from({ length: i }, (_, k) => k),
+            compares,
+            swaps,
+            message: `准备把位置 ${i} 的元素插入左侧有序区间。`,
+            line: 1
+          }));
+
+          while (j > 0) {
+            compares += 1;
+            steps.push(makeStep({
+              array: arr,
+              compare: [j - 1, j],
+              sorted: Array.from({ length: i }, (_, k) => k),
+              compares,
+              swaps,
+              message: `比较位置 ${j - 1} 和 ${j}。`,
+              line: 2
+            }));
+            if (arr[j - 1] <= arr[j]) {
+              break;
+            }
+            [arr[j - 1], arr[j]] = [arr[j], arr[j - 1]];
+            swaps += 1;
+            steps.push(makeStep({
+              array: arr,
+              swap: [j - 1, j],
+              sorted: Array.from({ length: i }, (_, k) => k),
+              compares,
+              swaps,
+              message: `交换位置 ${j - 1} 和 ${j}。`,
+              line: 3
+            }));
+            j -= 1;
+            steps.push(makeStep({
+              array: arr,
+              compare: [j],
+              sorted: Array.from({ length: i }, (_, k) => k),
+              compares,
+              swaps,
+              message: `继续向左检查新的位置 ${j}。`,
+              line: 4
+            }));
+          }
+
+          steps.push(makeStep({
+            array: arr,
+            sorted: Array.from({ length: i + 1 }, (_, k) => k),
+            compares,
+            swaps,
+            message: `前 ${i + 1} 个元素已有序。`,
+            line: 0
+          }));
+        }
+
+        steps.push(makeStep({
+          array: arr,
+          sorted: arr.map((_, index) => index),
+          compares,
+          swaps,
+          message: "排序完成。",
+          line: 3
+        }));
+        return steps;
+      }
+
+      function buildMergeSteps(input) {
+        const arr = input.slice();
+        const aux = input.slice();
+        const steps = [];
+        let compares = 0;
+        let swaps = 0;
+        steps.push(makeStep({ array: arr, message: "开始归并排序。", line: 0 }));
+
+        function mergeSort(left, right) {
+          if (left >= right) {
+            return;
+          }
+          const mid = Math.floor((left + right) / 2);
+          mergeSort(left, mid);
+          mergeSort(mid + 1, right);
+
+          for (let i = left; i <= right; i += 1) {
+            aux[i] = arr[i];
+          }
+
+          let i = left;
+          let j = mid + 1;
+          for (let k = left; k <= right; k += 1) {
+            if (i > mid) {
+              arr[k] = aux[j];
+              j += 1;
+              swaps += 1;
+            } else if (j > right) {
+              arr[k] = aux[i];
+              i += 1;
+              swaps += 1;
+            } else {
+              compares += 1;
+              steps.push(makeStep({
+                array: arr,
+                compare: [i, j],
+                sorted: [],
+                compares,
+                swaps,
+                message: `比较左右子数组元素 ${aux[i]} 和 ${aux[j]}。`,
+                line: 4
+              }));
+              if (aux[i] <= aux[j]) {
+                arr[k] = aux[i];
+                i += 1;
+              } else {
+                arr[k] = aux[j];
+                j += 1;
+              }
+              swaps += 1;
+            }
+
+            steps.push(makeStep({
+              array: arr,
+              swap: [k],
+              sorted: Array.from({ length: right - left + 1 }, (_, offset) => left + offset),
+              compares,
+              swaps,
+              message: `写回位置 ${k}，完成区间 [${left}, ${right}] 的部分合并。`,
+              line: 5
+            }));
+          }
+        }
+
+        mergeSort(0, arr.length - 1);
+        steps.push(makeStep({
+          array: arr,
+          sorted: arr.map((_, index) => index),
+          compares,
+          swaps,
+          message: "排序完成。",
+          line: 3
+        }));
+        return steps;
+      }
+
+      function buildSteps(algorithm, input) {
+        if (algorithm === "bubble") return buildBubbleSteps(input);
+        if (algorithm === "selection") return buildSelectionSteps(input);
+        if (algorithm === "insertion") return buildInsertionSteps(input);
+        return buildMergeSteps(input);
+      }
+
+      function makeBaseData() {
+        state.data = randomArray(Number(sizeInput.value));
+      }
+
+      function rebuild() {
+        stopTimer();
+        state.running = false;
+        state.steps = buildSteps(algorithmSelect.value, state.data);
+        state.stepIndex = 0;
+        updateLabels();
+        render();
+      }
+
+      function updateLabels() {
+        algorithmValue.textContent = algorithmNames[algorithmSelect.value];
+        sizeValue.textContent = sizeInput.value;
+        toggleRunButton.textContent = state.running ? "暂停" : "开始";
+      }
+
+      function currentStep() {
+        return state.steps[Math.min(state.stepIndex, state.steps.length - 1)];
+      }
+
+      function render() {
+        updateLabels();
+        const step = currentStep();
+        const values = step.array;
+        const width = 720;
+        const height = 420;
+        const paddingX = 18;
+        const paddingBottom = 30;
+        const barGap = 6;
+        const chartHeight = height - 50;
+        const maxValue = Math.max(...values, 1);
+        const barWidth = (width - paddingX * 2 - barGap * (values.length - 1)) / values.length;
+
+        barsSvg.innerHTML = "";
+
+        values.forEach((value, index) => {
+          const x = paddingX + index * (barWidth + barGap);
+          const barHeight = Math.max(16, value / maxValue * chartHeight);
+          const y = height - paddingBottom - barHeight;
+          let fill = "#93c5fd";
+          if (step.sorted.includes(index)) {
+            fill = "#22c55e";
+          } else if (step.swap.includes(index)) {
+            fill = "#f97316";
+          } else if (step.compare.includes(index)) {
+            fill = "#fbbf24";
+          }
+
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", x);
+          rect.setAttribute("y", y);
+          rect.setAttribute("width", barWidth);
+          rect.setAttribute("height", barHeight);
+          rect.setAttribute("rx", 4);
+          rect.setAttribute("fill", fill);
+          rect.setAttribute("stroke", fill === "#93c5fd" ? "#60a5fa" : fill);
+          barsSvg.appendChild(rect);
+
+          const valueText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          valueText.setAttribute("x", x + barWidth / 2);
+          valueText.setAttribute("y", y - 6);
+          valueText.setAttribute("text-anchor", "middle");
+          valueText.setAttribute("font-size", "12");
+          valueText.setAttribute("fill", "#374151");
+          valueText.textContent = String(value);
+          barsSvg.appendChild(valueText);
+
+          const indexText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          indexText.setAttribute("x", x + barWidth / 2);
+          indexText.setAttribute("y", height - 8);
+          indexText.setAttribute("text-anchor", "middle");
+          indexText.setAttribute("font-size", "12");
+          indexText.setAttribute("fill", "#6b7280");
+          indexText.textContent = String(index);
+          barsSvg.appendChild(indexText);
+        });
+
+        stepStat.textContent = String(state.stepIndex);
+        compareStat.textContent = String(step.compares);
+        swapStat.textContent = String(step.swaps);
+        statusStat.textContent = state.running ? "自动播放" : (state.stepIndex === 0 ? "未开始" : (state.stepIndex >= state.steps.length - 1 ? "已完成" : "暂停"));
+        stepText.textContent = step.message;
+        arrayStrip.textContent = `当前数组：${values.join(" , ")}`;
+        renderPseudo(step.line);
+      }
+
+      function renderPseudo(activeLine) {
+        pseudoList.innerHTML = "";
+        pythonCode[algorithmSelect.value].forEach((line, index) => {
+          const item = document.createElement("div");
+          item.className = "pseudo-line";
+          if (index === activeLine) {
+            item.classList.add("active");
+          }
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          item.append(number, code);
+          pseudoList.appendChild(item);
+        });
+      }
+
+      function stopTimer() {
+        if (state.timer !== null) {
+          clearTimeout(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function scheduleNext() {
+        stopTimer();
+        if (!state.running) return;
+        state.timer = setTimeout(() => {
+          advanceStep();
+          if (state.running) scheduleNext();
+        }, AUTO_DELAY);
+      }
+
+      function advanceStep() {
+        if (state.stepIndex < state.steps.length - 1) {
+          state.stepIndex += 1;
+          render();
+        } else {
+          state.running = false;
+          stopTimer();
+          render();
+        }
+      }
+
+      algorithmSelect.addEventListener("change", () => {
+        rebuild();
+      });
+
+      sizeInput.addEventListener("input", () => {
+        makeBaseData();
+        rebuild();
+      });
+
+      toggleRunButton.addEventListener("click", () => {
+        if (state.running) {
+          state.running = false;
+          stopTimer();
+          render();
+          return;
+        }
+        if (state.stepIndex >= state.steps.length - 1) {
+          state.stepIndex = 0;
+        }
+        state.running = true;
+        render();
+        scheduleNext();
+      });
+
+      stepButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        advanceStep();
+      });
+
+      shuffleButton.addEventListener("click", () => {
+        makeBaseData();
+        rebuild();
+      });
+
+      resetButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        state.stepIndex = 0;
+        render();
+      });
+
+      makeBaseData();
+      rebuild();
+    })();
+  </script>
+</body>
+</html>

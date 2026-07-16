@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>贪心找零可视化</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --accent: #3db3d8;
+      --button-bg: #ffffff;
+      --button-border: #d1d5db;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --coin: #dbeafe;
+      --coin-active: #fef3c7;
+      --coin-picked: #dcfce7;
+      --coin-fail: #fee2e2;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body { padding: 20px 24px 28px; }
+    .page { max-width: 1040px; margin: 0 auto; }
+    .head { margin-bottom: 12px; }
+    .head h1 {
+      margin: 0;
+      font-size: clamp(30px, 3.3vw, 42px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .head p {
+      margin: 10px 0 0;
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .rule {
+      height: 1px;
+      background: var(--line);
+      margin: 18px 0 22px;
+    }
+    .info-card {
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 18px 22px 16px;
+      margin-bottom: 18px;
+    }
+    .info-card::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: -1px;
+      bottom: -1px;
+      width: 4px;
+      background: var(--accent);
+    }
+    .info-card h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      font-weight: 500;
+    }
+    .info-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1.2fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: start;
+    }
+    .control h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 400;
+      text-align: center;
+    }
+    .control .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .button-stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      max-width: 210px;
+    }
+    button,
+    input[type="number"] {
+      appearance: none;
+      border: 1px solid var(--button-border);
+      background: var(--button-bg);
+      color: #2563eb;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 4px;
+      box-shadow: var(--shadow);
+      width: 100%;
+    }
+    input[type="number"] { color: #111827; }
+    button {
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    button:hover,
+    input[type="number"]:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    button:hover { transform: translateY(-1px); }
+    .slider-wrap,
+    .input-wrap {
+      width: 100%;
+      max-width: 220px;
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f8b84e;
+    }
+    .slider-value,
+    .input-hint {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 4px 0 16px;
+    }
+    .stat {
+      text-align: center;
+      padding: 12px 10px 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .stat .label {
+      font-size: 14px;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    .stat .value {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 660px) minmax(360px, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .board {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .amount-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .amount-box {
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      padding: 12px 14px;
+      text-align: center;
+    }
+    .amount-box .label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .amount-box .value {
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .coin-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .coin-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .coin-card.active {
+      border-color: #f59e0b;
+      background: var(--coin-active);
+    }
+    .coin-card.picked {
+      border-color: #16a34a;
+      background: var(--coin-picked);
+    }
+    .coin-card.fail {
+      border-color: #dc2626;
+      background: var(--coin-fail);
+    }
+    .coin-face {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #93c5fd;
+      background: var(--coin);
+      color: #1e3a8a;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .coin-meta {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .picked-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+      margin-bottom: 14px;
+    }
+    .picked-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .side-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .side-panel h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 500;
+    }
+    .step-text,
+    .compare-box,
+    .result-box {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
+    .step-text {
+      min-height: 48px;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+    .code-title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .code-block {
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      padding: 8px 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #94a3b8;
+      background: #ffffff;
+    }
+    .swatch.active { background: var(--coin-active); border-color: #f59e0b; }
+    .swatch.picked { background: var(--coin-picked); border-color: #16a34a; }
+    .swatch.fail { background: var(--coin-fail); border-color: #dc2626; }
+    .pseudo {
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+    .pseudo-line {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
+      background: #f9fafb;
+      border-left: 3px solid transparent;
+    }
+    .pseudo-line.active {
+      background: #fff7ed;
+      border-left-color: #fdba74;
+    }
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+    .line-code {
+      white-space: pre;
+      word-break: normal;
+    }
+    @media (max-width: 980px) {
+      body { padding: 18px 16px 24px; }
+      .controls,
+      .stats,
+      .main,
+      .amount-row,
+      .coin-row {
+        grid-template-columns: 1fr;
+      }
+      .control h3 { text-align: left; }
+      .control .content { align-items: stretch; }
+      .button-stack,
+      .slider-wrap,
+      .input-wrap { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <h1>贪心找零可视化</h1>
+      <p>观察贪心法如何每次优先选取当前最大面值，并和全局最优方案做对比。</p>
+    </header>
+
+    <div class="rule"></div>
+
+    <section class="info-card">
+      <h2>说明</h2>
+      <p>使用课件中的面值集合 `{1, 3, 5}`。贪心法在每一步都选择“不超过剩余金额的最大面值”，它通常很快，但不一定得到最少硬币数。默认目标金额是课件中的 `11`，此时贪心解会是 `5 + 5 + 1`，而最优解其实是 `5 + 3 + 3`。</p>
+    </section>
+
+    <section class="controls">
+      <div class="control">
+        <h3>目标金额</h3>
+        <div class="content">
+          <div class="input-wrap">
+            <input id="amountInput" type="number" min="1" max="30" step="1" value="11" />
+            <div class="input-hint">建议范围 1 - 30</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>模式</h3>
+        <div class="content">
+          <div class="slider-wrap">
+            <input id="modeInput" type="range" min="0" max="1" step="1" value="0" />
+            <div id="modeValue" class="slider-value">只看贪心</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>操作</h3>
+        <div class="content">
+          <div class="button-stack">
+            <button id="applyButton" type="button">应用金额</button>
+            <button id="toggleRunButton" type="button">开始</button>
+            <button id="stepButton" type="button">单步</button>
+            <button id="resetButton" type="button">重置</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="label">当前选择</div>
+        <div id="choiceStat" class="value">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">剩余金额</div>
+        <div id="remainStat" class="value">11</div>
+      </div>
+      <div class="stat">
+        <div class="label">贪心硬币数</div>
+        <div id="coinCountStat" class="value">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">状态</div>
+        <div id="statusStat" class="value">未开始</div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="board">
+        <div class="amount-row">
+          <div class="amount-box">
+            <div class="label">目标金额</div>
+            <div id="targetAmountBox" class="value">11</div>
+          </div>
+          <div class="amount-box">
+            <div class="label">当前剩余</div>
+            <div id="remainAmountBox" class="value">11</div>
+          </div>
+        </div>
+
+        <div id="coinRow" class="coin-row"></div>
+
+        <h3 style="margin: 0 0 10px; font-size: 16px; font-weight: 500;">已选硬币</h3>
+        <div id="pickedStrip" class="picked-strip"></div>
+      </div>
+
+      <aside class="side-panel">
+        <h3>过程说明</h3>
+        <div id="stepText" class="step-text"></div>
+
+        <h3 class="code-title">Python 代码</h3>
+        <div class="code-block">
+          <div id="pseudoList" class="pseudo"></div>
+        </div>
+
+        <div class="compare-box">
+          <h3>当前决策</h3>
+          <div id="decisionText">等待开始。</div>
+        </div>
+
+        <div class="result-box">
+          <h3>结果对比</h3>
+          <div id="resultText">尚未开始。</div>
+        </div>
+
+        <div class="legend">
+          <span class="legend-item"><span class="swatch active"></span>当前尝试的面值</span>
+          <span class="legend-item"><span class="swatch picked"></span>已经被选中的面值</span>
+          <span class="legend-item"><span class="swatch fail"></span>当前不能选择的面值</span>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const coins = [5, 3, 1];
+      const pseudoLines = [
+        "def greedy_change(amount):",
+        "    picked = []",
+        "    while amount > 0:",
+        "        for coin in [5, 3, 1]:",
+        "            if coin <= amount:",
+        "                picked.append(coin)",
+        "                amount -= coin",
+        "                break",
+        "    return picked"
+      ];
+
+      const AUTO_DELAY = 780;
+
+      const amountInput = document.getElementById("amountInput");
+      const modeInput = document.getElementById("modeInput");
+      const modeValue = document.getElementById("modeValue");
+      const applyButton = document.getElementById("applyButton");
+      const toggleRunButton = document.getElementById("toggleRunButton");
+      const stepButton = document.getElementById("stepButton");
+      const resetButton = document.getElementById("resetButton");
+      const choiceStat = document.getElementById("choiceStat");
+      const remainStat = document.getElementById("remainStat");
+      const coinCountStat = document.getElementById("coinCountStat");
+      const statusStat = document.getElementById("statusStat");
+      const targetAmountBox = document.getElementById("targetAmountBox");
+      const remainAmountBox = document.getElementById("remainAmountBox");
+      const coinRow = document.getElementById("coinRow");
+      const pickedStrip = document.getElementById("pickedStrip");
+      const stepText = document.getElementById("stepText");
+      const decisionText = document.getElementById("decisionText");
+      const resultText = document.getElementById("resultText");
+      const pseudoList = document.getElementById("pseudoList");
+
+      const state = {
+        amount: 11,
+        steps: [],
+        index: 0,
+        running: false,
+        timer: null
+      };
+
+      function optimalChange(target) {
+        const dp = Array(target + 1).fill(Infinity);
+        const prev = Array(target + 1).fill(null);
+        dp[0] = 0;
+
+        for (let value = 1; value <= target; value += 1) {
+          for (const coin of coins) {
+            if (value >= coin && dp[value - coin] + 1 < dp[value]) {
+              dp[value] = dp[value - coin] + 1;
+              prev[value] = coin;
+            }
+          }
+        }
+
+        const picked = [];
+        let cur = target;
+        while (cur > 0 && prev[cur] !== null) {
+          picked.push(prev[cur]);
+          cur -= prev[cur];
+        }
+
+        return {
+          count: dp[target],
+          picked
+        };
+      }
+
+      function buildSteps(target) {
+        const steps = [];
+        let remain = target;
+        const picked = [];
+        const optimal = optimalChange(target);
+
+        steps.push({
+          remain,
+          picked: picked.slice(),
+          activeCoin: null,
+          failCoins: [],
+          message: `目标金额为 ${target}，从最大面值开始尝试。`,
+          decision: "先看面值 5 是否可以使用。",
+          status: "未开始",
+          pseudo: 2,
+          final: false
+        });
+
+        while (remain > 0) {
+          let chosen = null;
+          const failCoins = [];
+
+          for (const coin of coins) {
+            if (coin <= remain) {
+              chosen = coin;
+              steps.push({
+                remain,
+                picked: picked.slice(),
+                activeCoin: coin,
+                failCoins: failCoins.slice(),
+                message: `当前剩余金额为 ${remain}，从大到小尝试面值。`,
+                decision: `面值 ${coin} 不超过剩余金额，因此贪心法立即选择它。`,
+                status: "进行中",
+                pseudo: 4,
+                final: false
+              });
+              break;
+            }
+            failCoins.push(coin);
+            steps.push({
+              remain,
+              picked: picked.slice(),
+              activeCoin: coin,
+              failCoins: failCoins.slice(),
+              message: `当前剩余金额为 ${remain}，面值 ${coin} 过大，不能使用。`,
+              decision: `跳过 ${coin}，继续尝试更小面值。`,
+              status: "进行中",
+              pseudo: 3,
+              final: false
+            });
+          }
+
+          picked.push(chosen);
+          remain -= chosen;
+          steps.push({
+            remain,
+            picked: picked.slice(),
+            activeCoin: chosen,
+            failCoins: [],
+            message: `选择面值 ${chosen} 后，剩余金额变为 ${remain}。`,
+            decision: `已选硬币：${picked.join(" + ")}。`,
+            status: remain === 0 ? "已完成" : "进行中",
+            pseudo: 6,
+            final: remain === 0
+          });
+        }
+
+        steps.push({
+          remain: 0,
+          picked: picked.slice(),
+          activeCoin: null,
+          failCoins: [],
+          message: "贪心找零结束，可以和最优解进行比较。",
+          decision: `贪心结果：${picked.join(" + ")}，共 ${picked.length} 枚。`,
+          status: "已完成",
+          pseudo: 8,
+          final: true,
+          optimal
+        });
+
+        return steps;
+      }
+
+      function currentStep() {
+        return state.steps[Math.min(state.index, state.steps.length - 1)];
+      }
+
+      function renderCoins(step) {
+        coinRow.innerHTML = "";
+        coins.forEach((coin) => {
+          const card = document.createElement("div");
+          card.className = "coin-card";
+          if (coin === step.activeCoin) card.classList.add("active");
+          if (step.picked.includes(coin)) card.classList.add("picked");
+          if (step.failCoins.includes(coin)) card.classList.add("fail");
+
+          const face = document.createElement("div");
+          face.className = "coin-face";
+          face.textContent = coin;
+
+          const meta = document.createElement("div");
+          meta.className = "coin-meta";
+          meta.innerHTML = `面值 ${coin}<br>${coin <= step.remain ? "可以尝试" : "当前过大"}`;
+
+          card.appendChild(face);
+          card.appendChild(meta);
+          coinRow.appendChild(card);
+        });
+      }
+
+      function renderPicked(step) {
+        pickedStrip.innerHTML = "";
+        if (!step.picked.length) {
+          const empty = document.createElement("span");
+          empty.className = "picked-chip";
+          empty.textContent = "暂无";
+          pickedStrip.appendChild(empty);
+          return;
+        }
+        step.picked.forEach((coin, index) => {
+          const chip = document.createElement("span");
+          chip.className = "picked-chip";
+          chip.textContent = `第 ${index + 1} 枚：${coin}`;
+          pickedStrip.appendChild(chip);
+        });
+      }
+
+      function renderPseudo(step) {
+        pseudoList.innerHTML = "";
+        pseudoLines.forEach((line, index) => {
+          const el = document.createElement("div");
+          el.className = "pseudo-line";
+          if (index === step.pseudo) el.classList.add("active");
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          el.append(number, code);
+          pseudoList.appendChild(el);
+        });
+      }
+
+      function renderResult(step) {
+        const finalStep = state.steps[state.steps.length - 1];
+        const showCompare = Number(modeInput.value) === 1 && finalStep.optimal;
+        if (!step.final) {
+          resultText.textContent = showCompare
+            ? "对比模式已开启，完成贪心过程后会显示最优解。"
+            : "完成贪心过程后显示结果。";
+          return;
+        }
+
+        const greedyText = `贪心解：${step.picked.join(" + ")}，共 ${step.picked.length} 枚。`;
+        if (!showCompare) {
+          resultText.textContent = greedyText;
+          return;
+        }
+
+        const optimal = finalStep.optimal;
+        const optimalText = `最优解：${optimal.picked.join(" + ")}，共 ${optimal.count} 枚。`;
+        const conclusion = optimal.count === step.picked.length
+          ? "本例中贪心法得到的就是最优解。"
+          : "本例中贪心法没有得到最少硬币数。";
+        resultText.innerHTML = `${greedyText}<br>${optimalText}<br>${conclusion}`;
+      }
+
+      function render() {
+        const step = currentStep();
+        renderCoins(step);
+        renderPicked(step);
+        renderPseudo(step);
+        renderResult(step);
+
+        modeValue.textContent = Number(modeInput.value) === 0 ? "只看贪心" : "显示最优对比";
+        targetAmountBox.textContent = String(state.amount);
+        remainAmountBox.textContent = String(step.remain);
+        choiceStat.textContent = step.activeCoin === null ? "-" : String(step.activeCoin);
+        remainStat.textContent = String(step.remain);
+        coinCountStat.textContent = String(step.picked.length);
+        statusStat.textContent = state.running ? "自动播放" : step.status;
+        stepText.textContent = step.message;
+        decisionText.textContent = step.decision;
+        toggleRunButton.textContent = state.running ? "暂停" : "开始";
+      }
+
+      function stopTimer() {
+        if (state.timer !== null) {
+          clearTimeout(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function advance() {
+        if (state.index < state.steps.length - 1) {
+          state.index += 1;
+          render();
+        } else {
+          state.running = false;
+          stopTimer();
+          render();
+        }
+      }
+
+      function scheduleNext() {
+        stopTimer();
+        if (!state.running) return;
+        state.timer = setTimeout(() => {
+          advance();
+          if (state.running) scheduleNext();
+        }, AUTO_DELAY);
+      }
+
+      function reset() {
+        stopTimer();
+        state.running = false;
+        state.index = 0;
+        render();
+      }
+
+      function applyAmount() {
+        const amount = Math.max(1, Math.min(30, Number(amountInput.value) || 11));
+        amountInput.value = String(amount);
+        state.amount = amount;
+        state.steps = buildSteps(amount);
+        state.index = 0;
+        state.running = false;
+        stopTimer();
+        render();
+      }
+
+      applyButton.addEventListener("click", applyAmount);
+      resetButton.addEventListener("click", reset);
+
+      toggleRunButton.addEventListener("click", () => {
+        if (state.index >= state.steps.length - 1) {
+          state.index = 0;
+        }
+        state.running = !state.running;
+        render();
+        if (state.running) scheduleNext();
+        else stopTimer();
+      });
+
+      stepButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        advance();
+      });
+
+      modeInput.addEventListener("input", render);
+
+      state.steps = buildSteps(state.amount);
+      render();
+    })();
+  </script>
+</body>
+</html>
