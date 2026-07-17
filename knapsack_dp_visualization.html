@@ -37,7 +37,7 @@
     }
 
     .page {
-      max-width: 1120px;
+      max-width: 1280px;
       margin: 0 auto;
     }
 
@@ -142,6 +142,8 @@
       box-shadow: var(--shadow);
     }
 
+    select { text-align: center; text-align-last: center; }
+
     button {
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -244,12 +246,16 @@
 
     .main {
       display: grid;
-      grid-template-columns: minmax(0, 760px) minmax(250px, 1fr);
+      grid-template-columns: minmax(0, 700px) minmax(500px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .table-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       border: 1px solid var(--line);
       background: #fff;
       box-shadow: var(--shadow);
@@ -326,16 +332,24 @@
       line-height: 1.65;
       color: #1f2937;
       padding-bottom: 10px;
-      border-bottom: 1px solid var(--line);
       margin-bottom: 12px;
     }
 
     .legend {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 6px 10px;
       font-size: 12px;
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
     }
 
     .legend-item {
@@ -362,17 +376,33 @@
       gap: 6px;
       font-size: 12px;
       color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
     }
 
     .pseudo-line {
-      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
       background: #f9fafb;
-      border: 1px solid #eef2f7;
+      border-left: 3px solid transparent;
     }
 
     .pseudo-line.active {
       background: #fff7ed;
-      border-color: #fdba74;
+      border-left-color: #fdba74;
+    }
+
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .line-code {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
 
     @media (max-width: 980px) {
@@ -408,7 +438,9 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>这里直接使用课件中的参数：背包容量 `C=10`，5 件物品的重量为 `{2,2,6,5,4}`，价值为 `{6,3,5,4,6}`。先填最优值表 `V[i][j]`，再从 `V[n][C]` 回溯选出最终装入背包的物品。</p>
+      <p>0/1 背包问题：给定容量为 C 的背包和 n 件物品，每件物品有重量 w<sub>i</sub> 和价值 v<sub>i</sub>，如何选择装入的物品使总价值最大？</p>
+      <p>使用课件中的参数：背包容量 C=10，5 件物品的重量为 {2, 2, 6, 5, 4}，价值为 {6, 3, 5, 4, 6}。算法用动态规划构建最优值表 V[i][j]（前 i 件物品在容量 j 下的最大价值），再从 V[n][C] 回溯找出具体选了哪些物品。</p>
+      <p>页面会逐格演示填表过程：黄色高亮当前正在计算的格子，橙色标记比较来源的两个格子，绿色表示回溯路径上被选中的格子。</p>
     </section>
 
     <section class="controls">
@@ -443,7 +475,6 @@
               <option value="fill">只看填表</option>
               <option value="trace">只看回溯</option>
             </select>
-            <div id="phaseValue" class="select-value">完整过程</div>
           </div>
         </div>
       </div>
@@ -483,6 +514,12 @@
     <section class="main">
       <div class="table-shell">
         <table id="dpTable"></table>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch active"></span>当前状态格</span>
+          <span class="legend-item"><span class="swatch compare"></span>比较的来源格</span>
+          <span class="legend-item"><span class="swatch picked"></span>回溯选中的格</span>
+          <span class="legend-item"><span class="swatch skip"></span>直接继承上一行</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -499,14 +536,7 @@
           <div id="pickedText">尚未开始回溯。</div>
         </div>
 
-        <div class="legend">
-          <span class="legend-item"><span class="swatch active"></span>当前状态格</span>
-          <span class="legend-item"><span class="swatch compare"></span>比较的来源格</span>
-          <span class="legend-item"><span class="swatch picked"></span>回溯选中的格</span>
-          <span class="legend-item"><span class="swatch skip"></span>直接继承上一行</span>
-        </div>
-
-        <h3>伪代码提示</h3>
+        <h3 class="code-title">Python 代码</h3>
         <div id="pseudoList" class="pseudo"></div>
       </aside>
     </section>
@@ -524,10 +554,17 @@
       const capacity = 10;
 
       const pseudoLines = [
-        "若容量 j 小于第 i 件物品重量，则 V[i][j] = V[i-1][j]",
-        "否则比较“不装第 i 件”和“装第 i 件”",
-        "取二者较大值写入 V[i][j]",
-        "从 V[n][C] 开始向前回溯，判断哪些物品被选中"
+        "def knapsack_dp(w, v, C):",
+        "    n = len(w)",
+        "    V = [[0]*(C+1) for _ in range(n+1)]",
+        "    for i in range(1, n+1):",
+        "        for j in range(C+1):",
+        "            if j < w[i-1]:",
+        "                V[i][j] = V[i-1][j]",
+        "            else:",
+        "                V[i][j] = max(V[i-1][j],",
+        "                    V[i-1][j-w[i-1]] + v[i-1])",
+        "    return V[n][C]"
       ];
 
       const toggleRunButton = document.getElementById("toggleRunButton");
@@ -537,7 +574,6 @@
       const speedInput = document.getElementById("speedInput");
       const speedValue = document.getElementById("speedValue");
       const phaseSelect = document.getElementById("phaseSelect");
-      const phaseValue = document.getElementById("phaseValue");
       const focusInput = document.getElementById("focusInput");
       const focusValue = document.getElementById("focusValue");
       const stateStat = document.getElementById("stateStat");
@@ -599,7 +635,7 @@
                 message: `当前处理第 ${item.id} 件物品，容量 j=${j} 小于重量 ${item.weight}，所以不能装入。`,
                 choice: `只能继承上一行的值 V[${i - 1}][${j}] = ${dp[i - 1][j]}。`,
                 pickedItems: [],
-                pseudo: 0
+                pseudo: 5
               });
             } else {
               const skipValue = dp[i - 1][j];
@@ -622,7 +658,7 @@
                   ? `装入更优：max(${skipValue}, ${dp[i - 1][j - item.weight]} + ${item.value}) = ${takeValue}。`
                   : `不装更优：max(${skipValue}, ${dp[i - 1][j - item.weight]} + ${item.value}) = ${skipValue}。`,
                 pickedItems: [],
-                pseudo: take ? 2 : 1
+                pseudo: take ? 8 : 6
               });
             }
           }
@@ -646,7 +682,7 @@
           message: `填表完成，从 V[${i}][${j}] = ${dp[i][j]} 开始回溯。`,
           choice: "判断每一行是否真的选择了当前物品。",
           pickedItems: picked.slice(),
-          pseudo: 3
+          pseudo: 9
         });
 
         while (i > 0 && j >= 0) {
@@ -667,7 +703,7 @@
               message: `V[${i}][${j}] > V[${i - 1}][${j}]，说明第 ${item.id} 件物品被选中。`,
               choice: `选择物品 ${item.id} 后，容量回退到 ${j - item.weight}。`,
               pickedItems: picked.slice(),
-              pseudo: 3
+              pseudo: 8
             });
             j -= item.weight;
           } else {
@@ -685,7 +721,7 @@
               message: `V[${i}][${j}] = V[${i - 1}][${j}]，说明第 ${item.id} 件物品没有被选中。`,
               choice: `跳过物品 ${item.id}，继续查看上一行。`,
               pickedItems: picked.slice(),
-              pseudo: 3
+              pseudo: 6
             });
           }
           i -= 1;
@@ -705,7 +741,7 @@
           message: "回溯结束，已经得到最优装包方案。",
           choice: `最终选择物品：${picked.slice().reverse().join("、")}，总价值为 ${dp[items.length][capacity]}。`,
           pickedItems: picked.slice(),
-          pseudo: 3
+          pseudo: 9
         });
 
         return steps;
@@ -792,7 +828,13 @@
           const el = document.createElement("div");
           el.className = "pseudo-line";
           if (index === step.pseudo) el.classList.add("active");
-          el.textContent = line;
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          el.append(number, code);
           pseudoList.appendChild(el);
         });
       }
@@ -815,7 +857,6 @@
           : (step.phase === "trace" ? "当前还没有确定被选中的物品。" : "填表阶段暂不回溯。");
         speedValue.textContent = `${speedInput.value} 步/秒`;
         focusValue.textContent = focusInput.value;
-        phaseValue.textContent = phaseSelect.options[phaseSelect.selectedIndex].text;
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
 
