@@ -99,12 +99,13 @@
     }
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
       max-width: 210px;
     }
     button,
+    select,
     input[type="number"] {
       appearance: none;
       border: 1px solid var(--button-border);
@@ -118,6 +119,7 @@
       box-shadow: var(--shadow);
       width: 100%;
     }
+    select { text-align: center; text-align-last: center; }
     input[type="number"] { color: #111827; }
     button {
       cursor: pointer;
@@ -130,12 +132,36 @@
     }
     button:hover { transform: translateY(-1px); }
     .slider-wrap,
-    .input-wrap {
+    .select-wrap {
       width: 100%;
       max-width: 220px;
       display: grid;
       justify-items: center;
       gap: 8px;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 38px;
+    }
+
+    .input-wrap input {
+      width: 120px;
+      height: 38px;
+      box-sizing: border-box;
+    }
+
+    .input-wrap button {
+      position: absolute;
+      left: calc(50% + 60px + 4px);
+      width: 60px;
+      height: 38px;
+      white-space: nowrap;
+      box-sizing: border-box;
     }
     input[type="range"] {
       width: 100%;
@@ -174,9 +200,13 @@
       display: grid;
       grid-template-columns: minmax(0, 660px) minmax(360px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
     .board {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       border: 1px solid var(--line);
       background: #fff;
       box-shadow: var(--shadow);
@@ -205,10 +235,11 @@
       font-variant-numeric: tabular-nums;
     }
     .coin-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      display: flex;
       gap: 12px;
       margin-bottom: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
     .coin-card {
       border: 1px solid var(--line);
@@ -273,9 +304,7 @@
       font-size: 17px;
       font-weight: 500;
     }
-    .step-text,
-    .compare-box,
-    .result-box {
+    .step-text {
       font-size: 13px;
       line-height: 1.65;
       color: #1f2937;
@@ -284,7 +313,14 @@
       margin-bottom: 12px;
     }
 
-    .step-text {
+    .compare-box,
+    .result-box {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
       min-height: 48px;
       padding-bottom: 6px;
       margin-bottom: 10px;
@@ -305,11 +341,20 @@
     }
 
     .legend {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 6px 10px;
       font-size: 12px;
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
     }
     .legend-item {
       display: inline-flex;
@@ -352,22 +397,22 @@
       user-select: none;
     }
     .line-code {
-      white-space: pre;
-      word-break: normal;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
     @media (max-width: 980px) {
       body { padding: 18px 16px 24px; }
       .controls,
       .stats,
       .main,
-      .amount-row,
-      .coin-row {
+      .amount-row {
         grid-template-columns: 1fr;
       }
       .control h3 { text-align: left; }
       .control .content { align-items: stretch; }
       .button-stack,
       .slider-wrap,
+      .select-wrap,
       .input-wrap { max-width: none; }
     }
   </style>
@@ -383,26 +428,31 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>使用课件中的面值集合 `{1, 3, 5}`。贪心法在每一步都选择“不超过剩余金额的最大面值”，它通常很快，但不一定得到最少硬币数。默认目标金额是课件中的 `11`，此时贪心解会是 `5 + 5 + 1`，而最优解其实是 `5 + 3 + 3`。</p>
+      <p><strong>问题</strong>：给定若干种面值的硬币，如何用最少的硬币凑够指定金额？贪心法在每一步都选择「不超过剩余金额的最大面值」。</p>
+      <p><strong>关键点</strong>：贪心法可以快速得到一个解，<strong>但不一定是最少硬币数</strong>。换一组面值，贪心的结果就会不同。页面提供了三种面值组合，方便对比贪心在哪些情况下成立、哪些情况下失效。</p>
+      <p>例如面值 {1, 5, 11} 找 15 元：贪心法会选 11 + 1 + 1 + 1 + 1（5 枚），但最优解是 5 + 5 + 5（3 枚），贪心并非全局最优。</p>
     </section>
 
     <section class="controls">
-      <div class="control">
+        <div class="control">
         <h3>目标金额</h3>
         <div class="content">
           <div class="input-wrap">
-            <input id="amountInput" type="number" min="1" max="30" step="1" value="11" />
-            <div class="input-hint">建议范围 1 - 30</div>
+            <input id="amountInput" type="number" min="1" max="30" step="1" value="11" placeholder="建议范围 1 - 30" />
+            <button id="applyButton" type="button">应用</button>
           </div>
         </div>
       </div>
 
       <div class="control">
-        <h3>模式</h3>
+        <h3>面值集</h3>
         <div class="content">
-          <div class="slider-wrap">
-            <input id="modeInput" type="range" min="0" max="1" step="1" value="0" />
-            <div id="modeValue" class="slider-value">只看贪心</div>
+          <div class="select-wrap">
+            <select id="coinSetSelect">
+              <option value="fail">贪心失效</option>
+              <option value="teach">贪心可用</option>
+              <option value="success">贪心成立</option>
+            </select>
           </div>
         </div>
       </div>
@@ -411,7 +461,6 @@
         <h3>操作</h3>
         <div class="content">
           <div class="button-stack">
-            <button id="applyButton" type="button">应用金额</button>
             <button id="toggleRunButton" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
             <button id="resetButton" type="button">重置</button>
@@ -456,6 +505,11 @@
 
         <h3 style="margin: 0 0 10px; font-size: 16px; font-weight: 500;">已选硬币</h3>
         <div id="pickedStrip" class="picked-strip"></div>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch active"></span>当前尝试的面值</span>
+          <span class="legend-item"><span class="swatch picked"></span>已被选中的面值</span>
+          <span class="legend-item"><span class="swatch fail"></span>当前不能选择的面值</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -476,36 +530,41 @@
           <h3>结果对比</h3>
           <div id="resultText">尚未开始。</div>
         </div>
-
-        <div class="legend">
-          <span class="legend-item"><span class="swatch active"></span>当前尝试的面值</span>
-          <span class="legend-item"><span class="swatch picked"></span>已经被选中的面值</span>
-          <span class="legend-item"><span class="swatch fail"></span>当前不能选择的面值</span>
-        </div>
       </aside>
     </section>
   </main>
 
   <script>
     (() => {
-      const coins = [5, 3, 1];
-      const pseudoLines = [
-        "def greedy_change(amount):",
-        "    picked = []",
-        "    while amount > 0:",
-        "        for coin in [5, 3, 1]:",
-        "            if coin <= amount:",
-        "                picked.append(coin)",
-        "                amount -= coin",
-        "                break",
-        "    return picked"
-      ];
+      const coinSets = {
+        fail: { coins: [11, 5, 1], name: "{1, 5, 11}" },
+        teach: { coins: [5, 3, 1], name: "{1, 3, 5}" },
+        success: { coins: [25, 10, 5, 1], name: "{1, 5, 10, 25}" }
+      };
+
+      function currentCoins() {
+        return coinSets[coinSetSelect.value].coins;
+      }
+
+      function pseudoLinesForCoins(coinsArr) {
+        const str = coinsArr.join(", ");
+        return [
+          "def greedy_change(amount):",
+          "    picked = []",
+          "    while amount > 0:",
+          `        for coin in [${str}]:`,
+          "            if coin <= amount:",
+          "                picked.append(coin)",
+          "                amount -= coin",
+          "                break",
+          "    return picked"
+        ];
+      }
 
       const AUTO_DELAY = 780;
 
       const amountInput = document.getElementById("amountInput");
-      const modeInput = document.getElementById("modeInput");
-      const modeValue = document.getElementById("modeValue");
+      const coinSetSelect = document.getElementById("coinSetSelect");
       const applyButton = document.getElementById("applyButton");
       const toggleRunButton = document.getElementById("toggleRunButton");
       const stepButton = document.getElementById("stepButton");
@@ -532,12 +591,13 @@
       };
 
       function optimalChange(target) {
+        const coinList = currentCoins();
         const dp = Array(target + 1).fill(Infinity);
         const prev = Array(target + 1).fill(null);
         dp[0] = 0;
 
         for (let value = 1; value <= target; value += 1) {
-          for (const coin of coins) {
+          for (const coin of coinList) {
             if (value >= coin && dp[value - coin] + 1 < dp[value]) {
               dp[value] = dp[value - coin] + 1;
               prev[value] = coin;
@@ -559,6 +619,7 @@
       }
 
       function buildSteps(target) {
+        const coinList = currentCoins();
         const steps = [];
         let remain = target;
         const picked = [];
@@ -580,7 +641,7 @@
           let chosen = null;
           const failCoins = [];
 
-          for (const coin of coins) {
+          for (const coin of coinList) {
             if (coin <= remain) {
               chosen = coin;
               steps.push({
@@ -647,7 +708,7 @@
 
       function renderCoins(step) {
         coinRow.innerHTML = "";
-        coins.forEach((coin) => {
+        currentCoins().forEach((coin) => {
           const card = document.createElement("div");
           card.className = "coin-card";
           if (coin === step.activeCoin) card.classList.add("active");
@@ -687,7 +748,8 @@
 
       function renderPseudo(step) {
         pseudoList.innerHTML = "";
-        pseudoLines.forEach((line, index) => {
+        const lines = pseudoLinesForCoins(currentCoins());
+        lines.forEach((line, index) => {
           const el = document.createElement("div");
           el.className = "pseudo-line";
           if (index === step.pseudo) el.classList.add("active");
@@ -704,25 +766,17 @@
 
       function renderResult(step) {
         const finalStep = state.steps[state.steps.length - 1];
-        const showCompare = Number(modeInput.value) === 1 && finalStep.optimal;
         if (!step.final) {
-          resultText.textContent = showCompare
-            ? "对比模式已开启，完成贪心过程后会显示最优解。"
-            : "完成贪心过程后显示结果。";
+          resultText.textContent = "完成贪心过程后显示结果对比。";
           return;
         }
 
         const greedyText = `贪心解：${step.picked.join(" + ")}，共 ${step.picked.length} 枚。`;
-        if (!showCompare) {
-          resultText.textContent = greedyText;
-          return;
-        }
-
         const optimal = finalStep.optimal;
         const optimalText = `最优解：${optimal.picked.join(" + ")}，共 ${optimal.count} 枚。`;
         const conclusion = optimal.count === step.picked.length
           ? "本例中贪心法得到的就是最优解。"
-          : "本例中贪心法没有得到最少硬币数。";
+          : `本例中贪心法没有得到最少硬币数（差 ${step.picked.length - optimal.count} 枚），贪心不一定全局最优。`;
         resultText.innerHTML = `${greedyText}<br>${optimalText}<br>${conclusion}`;
       }
 
@@ -733,7 +787,6 @@
         renderPseudo(step);
         renderResult(step);
 
-        modeValue.textContent = Number(modeInput.value) === 0 ? "只看贪心" : "显示最优对比";
         targetAmountBox.textContent = String(state.amount);
         remainAmountBox.textContent = String(step.remain);
         choiceStat.textContent = step.activeCoin === null ? "-" : String(step.activeCoin);
@@ -809,7 +862,14 @@
         advance();
       });
 
-      modeInput.addEventListener("input", render);
+      coinSetSelect.addEventListener("change", () => {
+        const amount = state.amount;
+        state.steps = buildSteps(amount);
+        state.index = 0;
+        state.running = false;
+        stopTimer();
+        render();
+      });
 
       state.steps = buildSteps(state.amount);
       render();
