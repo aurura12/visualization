@@ -38,7 +38,7 @@
     }
 
     .page {
-      max-width: 980px;
+      max-width: 1140px;
       margin: 0 auto;
     }
 
@@ -102,7 +102,7 @@
     .controls {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 22px;
+      gap: 16px;
       margin-bottom: 18px;
     }
 
@@ -122,9 +122,10 @@
 
     .button-stack {
       display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
-      max-width: 160px;
+      max-width: 210px;
     }
 
     button,
@@ -140,6 +141,8 @@
       border-radius: 4px;
       box-shadow: var(--shadow);
     }
+
+    select { text-align: center; text-align-last: center; }
 
     button {
       cursor: pointer;
@@ -206,22 +209,25 @@
 
     .main {
       display: grid;
-      grid-template-columns: minmax(0, 560px) minmax(380px, 1fr);
+      grid-template-columns: minmax(0, 580px) minmax(440px, 1fr);
       gap: 18px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .plot-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
-      aspect-ratio: 1 / 1;
     }
 
     svg {
       display: block;
       width: 100%;
-      height: 100%;
+      height: auto;
     }
 
     .side-panel {
@@ -253,9 +259,17 @@
       gap: 8px;
     }
 
+    .distance-header {
+      border: none;
+      background: transparent;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
     .distance-item {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(45px, auto) minmax(35px, auto) 1fr;
       gap: 10px;
       align-items: center;
       padding: 8px 10px;
@@ -319,16 +333,23 @@
 
     .line-code {
       white-space: pre-wrap;
-      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     .legend {
+      position: absolute;
+      top: 14px;
+      right: 14px;
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin: 0;
+      padding: 8px 10px;
       font-size: 12px;
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
     }
 
     .legend-item {
@@ -358,6 +379,30 @@
     .legend-swatch.path {
       background: var(--path);
       border-color: #15803d;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 38px;
+    }
+
+    .input-wrap input {
+      width: 100px;
+      height: 38px;
+      box-sizing: border-box;
+    }
+
+    .input-wrap button {
+      position: absolute;
+      left: calc(50% + 50px + 4px);
+      width: 90px;
+      height: 38px;
+      box-sizing: border-box;
+      white-space: nowrap;
     }
 
     @media (max-width: 980px) {
@@ -393,7 +438,9 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>从起点出发，算法每一步都会从“未确定最短路”的顶点中选出当前距离最小的一个，然后尝试更新它相邻顶点的距离。单步执行时可以清楚看到每次松弛带来的变化。</p>
+      <p>Dijkstra 算法解决<strong>单源最短路径</strong>问题：给定一个带权图和一个起点，找出从起点到图中所有其他顶点的最短路径。图中每条边都有一个非负权值。</p>
+      <p>算法维护每个顶点当前的<strong>最短距离估计值</strong>，初始时起点为 0，其余顶点为 ∞。每一步从尚未确定的顶点中选出当前距离最小的一个，将其标记为<strong>已确定</strong>，然后<strong>松弛</strong>它的所有相邻边——即检查能否通过当前顶点获得更短的路径。图中会用橙色高亮当前正在松弛的边。</p>
+      <p>由于始终选择当前距离最小的顶点，Dijkstra 算法保证了每次被标记"已确定"的顶点，其距离就是真正的全局最短距离（这一性质依赖于边权非负）。绿色边属于最终的最短路树，蓝色顶点表示已确定最短距离。单步执行时可以清楚看到每次松弛带来的变化。</p>
     </section>
 
     <section class="controls">
@@ -401,8 +448,7 @@
         <h3>节点数</h3>
         <div class="content">
           <div class="input-wrap">
-            <input id="nodeCountInput" type="number" min="4" max="10" step="1" value="7" />
-            <div class="slider-value">建议范围 4 - 10</div>
+            <input id="nodeCountInput" type="number" min="4" max="10" step="1" value="7" placeholder="建议范围 4 - 10" />
             <button id="randomizeButton" type="button">随机生成</button>
           </div>
         </div>
@@ -413,7 +459,6 @@
         <div class="content">
           <div class="select-wrap">
             <select id="sourceSelect"></select>
-            <div id="sourceValue" class="select-value">A</div>
           </div>
         </div>
       </div>
@@ -452,6 +497,12 @@
     <section class="main">
       <div class="plot-shell">
         <svg id="graphSvg" viewBox="0 0 660 660" aria-label="Dijkstra graph"></svg>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch"></span>未确定</span>
+          <span class="legend-item"><span class="legend-swatch active"></span>当前顶点</span>
+          <span class="legend-item"><span class="legend-swatch settled"></span>已确定</span>
+          <span class="legend-item"><span class="legend-swatch path"></span>最短路树</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -463,12 +514,6 @@
         </div>
         <h3>距离表</h3>
         <div id="distanceList" class="distance-list"></div>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-swatch"></span>未确定</span>
-          <span class="legend-item"><span class="legend-swatch active"></span>当前顶点</span>
-          <span class="legend-item"><span class="legend-swatch settled"></span>已确定</span>
-          <span class="legend-item"><span class="legend-swatch path"></span>最短路树</span>
-        </div>
       </aside>
     </section>
   </main>
@@ -544,7 +589,6 @@
       const stepButton = document.getElementById("stepButton");
       const resetButton = document.getElementById("resetButton");
       const sourceSelect = document.getElementById("sourceSelect");
-      const sourceValue = document.getElementById("sourceValue");
       const currentNodeStat = document.getElementById("currentNodeStat");
       const settledCountStat = document.getElementById("settledCountStat");
       const stepCountStat = document.getElementById("stepCountStat");
@@ -601,7 +645,6 @@
           state.source = state.graph.nodes[0].id;
         }
         sourceSelect.value = state.source;
-        sourceValue.textContent = state.source;
       }
 
       function generateRandomGraph() {
@@ -819,8 +862,29 @@
         });
       }
 
+      function buildPath(nodeId) {
+        const path = [];
+        let current = nodeId;
+        while (current !== null) {
+          path.unshift(current);
+          current = state.previous[current];
+        }
+        return path;
+      }
+
       function renderDistanceList() {
         distanceList.innerHTML = "";
+
+        // Header row
+        const header = document.createElement("div");
+        header.className = "distance-item distance-header";
+        ["终点", "距离", "路径"].forEach((label) => {
+          const span = document.createElement("span");
+          span.textContent = label;
+          header.appendChild(span);
+        });
+        distanceList.appendChild(header);
+
         state.graph.nodes.forEach((node) => {
           const item = document.createElement("div");
           item.className = "distance-item";
@@ -829,13 +893,23 @@
           } else if (state.settled.has(node.id)) {
             item.classList.add("settled");
           }
-          const predecessor = state.previous[node.id] ? ` ← ${state.previous[node.id]}` : "";
-          const left = document.createElement("span");
-          left.textContent = `${node.id}${predecessor}`;
-          const right = document.createElement("strong");
-          right.textContent = Number.isFinite(state.distances[node.id]) ? String(state.distances[node.id]) : "∞";
-          item.appendChild(left);
-          item.appendChild(right);
+
+          const nodeSpan = document.createElement("strong");
+          nodeSpan.textContent = node.id;
+
+          const distSpan = document.createElement("span");
+          distSpan.textContent = Number.isFinite(state.distances[node.id])
+            ? String(state.distances[node.id])
+            : "∞";
+          distSpan.style.fontWeight = "700";
+
+          const pathSpan = document.createElement("span");
+          const path = buildPath(node.id);
+          pathSpan.textContent = path.length > 1 ? path.join(" → ") : "—";
+
+          item.appendChild(nodeSpan);
+          item.appendChild(distSpan);
+          item.appendChild(pathSpan);
           distanceList.appendChild(item);
         });
       }
@@ -889,7 +963,6 @@
 
       sourceSelect.addEventListener("change", () => {
         state.source = sourceSelect.value;
-        sourceValue.textContent = state.source;
         resetAlgorithm();
       });
 
