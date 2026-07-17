@@ -147,6 +147,8 @@
       width: 100%;
     }
 
+    select { text-align: center; text-align-last: center; }
+
     input[type="text"] {
       color: #111827;
       font-weight: 500;
@@ -250,10 +252,14 @@
       display: grid;
       grid-template-columns: minmax(0, 720px) minmax(260px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .plot-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -279,14 +285,21 @@
       font-weight: 500;
     }
 
-    .step-text,
+    .step-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
     .result-box,
     .stack-box {
       font-size: 13px;
       line-height: 1.65;
       color: #1f2937;
       padding-bottom: 10px;
-      border-bottom: 1px solid var(--line);
       margin-bottom: 12px;
     }
 
@@ -308,22 +321,79 @@
       font-weight: 600;
     }
 
+    .legend {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid #94a3b8;
+      background: #ffffff;
+    }
+
+    .legend-swatch.valued { background: #e0f2fe; border-color: #0284c7; }
+    .legend-swatch.current { background: #fed7aa; border-color: #c2410c; }
+    .legend-swatch.done { background: #dcfce7; border-color: #16a34a; }
+
+    .code-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
     .pseudo {
       display: grid;
       gap: 6px;
       font-size: 12px;
       color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
     }
 
     .pseudo-line {
-      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
       background: #f9fafb;
-      border: 1px solid #eef2f7;
+      border-left: 3px solid transparent;
     }
 
     .pseudo-line.active {
       background: #fff7ed;
-      border-color: #fdba74;
+      border-left-color: #fdba74;
+    }
+
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .line-code {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
 
     @media (max-width: 980px) {
@@ -342,7 +412,8 @@
       .button-stack,
       .slider-wrap,
       .select-wrap,
-      .input-wrap {
+      .input-wrap,
+      .legend {
         max-width: none;
       }
     }
@@ -359,7 +430,8 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>按照课件中的 `buildParseTree` 思路：遇到 `(` 就创建左孩子并向下，遇到运算符就写入当前节点并创建右孩子，遇到数字就写入数值并弹栈回到父节点，遇到 `)` 也弹栈返回。页面同时展示 token、父节点栈、树结构和遍历结果。</p>
+      <p>按照课件中的思路，用栈辅助构建表达式解析树：遇到 <code>(</code> 创建左孩子并向下，遇到运算符写入当前节点并创建右孩子，遇到数字写入数值并弹栈回到父节点，遇到 <code>)</code> 弹栈返回。建树完成后可进行前序、中序、后序遍历与求值。</p>
+      <p>树节点颜色含义：蓝色表示已赋值，橙色表示当前正在处理的节点，绿色表示建树完成后的节点。</p>
     </section>
 
     <section class="controls">
@@ -377,11 +449,10 @@
         <div class="content">
           <div class="select-wrap">
             <select id="exampleSelect">
-              <option value="( ( 7 + 3 ) * ( 5 - 2 ) )">( ( 7 + 3 ) * ( 5 - 2 ) )</option>
-              <option value="( ( 8 / 4 ) + ( 6 * 3 ) )">( ( 8 / 4 ) + ( 6 * 3 ) )</option>
-              <option value="( ( ( 2 + 5 ) * 3 ) - ( 9 / 3 ) )">( ( ( 2 + 5 ) * 3 ) - ( 9 / 3 ) )</option>
+              <option value="( ( 7 + 3 ) * ( 5 - 2 ) )">示例 1：(7+3)*(5-2)</option>
+              <option value="( ( 8 / 4 ) + ( 6 * 3 ) )">示例 2：(8/4)+(6*3)</option>
+              <option value="( ( ( 2 + 5 ) * 3 ) - ( 9 / 3 ) )">示例 3：((2+5)*3)-(9/3)</option>
             </select>
-            <div id="exampleValue" class="select-value">示例 1</div>
           </div>
         </div>
       </div>
@@ -433,6 +504,11 @@
     <section class="main">
       <div class="plot-shell">
         <svg id="treeSvg" viewBox="0 0 720 420" aria-label="parse tree"></svg>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch valued"></span>已赋值</span>
+          <span class="legend-item"><span class="legend-swatch current"></span>当前节点</span>
+          <span class="legend-item"><span class="legend-swatch done"></span>建树完成</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -449,7 +525,7 @@
           <div id="resultText">尚未完成建树。</div>
         </div>
 
-        <h3>伪代码提示</h3>
+        <h3 class="code-title">Python 代码</h3>
         <div id="pseudoList" class="pseudo"></div>
       </aside>
     </section>
@@ -458,15 +534,29 @@
   <script>
     (() => {
       const pseudoLines = [
-        "遇到 ( ：创建左孩子，当前节点入栈，下降到左孩子",
-        "遇到运算符：写入当前节点，创建右孩子，当前节点入栈，下降到右孩子",
-        "遇到数字：写入当前节点，弹栈回到父节点",
-        "遇到 ) ：弹栈回到父节点"
+        "def build_parse_tree(tokens):",
+        "    root = ParseTreeNode()",
+        "    stack = [root]",
+        "    for token in tokens:",
+        "        if token == '(':",
+        "            current.left = ParseTreeNode()",
+        "            stack.append(current)",
+        "            current = current.left",
+        "        elif token in '+-*/':",
+        "            current.value = token",
+        "            current.right = ParseTreeNode()",
+        "            stack.append(current)",
+        "            current = current.right",
+        "        elif token == ')':",
+        "            current = stack.pop()",
+        "        else:",
+        "            current.value = int(token)",
+        "            current = stack.pop()",
+        "    return root"
       ];
 
       const expressionInput = document.getElementById("expressionInput");
       const exampleSelect = document.getElementById("exampleSelect");
-      const exampleValue = document.getElementById("exampleValue");
       const speedInput = document.getElementById("speedInput");
       const speedValue = document.getElementById("speedValue");
       const applyButton = document.getElementById("applyButton");
@@ -580,24 +670,24 @@
             current.left = createNode();
             stack.push(current);
             current = current.left;
-            takeSnapshot(idx + 1, token, "读到左括号：创建左孩子，把当前节点入栈，并下降到左孩子。", 0);
+            takeSnapshot(idx + 1, token, "读到左括号：创建左孩子，把当前节点入栈，并下降到左孩子。", 4);
           } else if (["+","-","*","/"].includes(token)) {
             current.value = token;
             current.right = createNode();
             stack.push(current);
             current = current.right;
-            takeSnapshot(idx + 1, token, `读到运算符 ${token}：写入当前节点，创建右孩子，入栈并转到右孩子。`, 1);
+            takeSnapshot(idx + 1, token, `读到运算符 ${token}：写入当前节点，创建右孩子，入栈并转到右孩子。`, 8);
           } else if (token === ")") {
             current = stack.pop() || current;
-            takeSnapshot(idx + 1, token, "读到右括号：当前子树结束，弹栈返回父节点。", 3);
+            takeSnapshot(idx + 1, token, "读到右括号：当前子树结束，弹栈返回父节点。", 13);
           } else {
             current.value = Number(token);
             current = stack.pop() || current;
-            takeSnapshot(idx + 1, token, `读到数字 ${token}：写入当前节点，然后弹栈回到父节点。`, 2);
+            takeSnapshot(idx + 1, token, `读到数字 ${token}：写入当前节点，然后弹栈回到父节点。`, 15);
           }
         });
 
-        takeSnapshot(tokens.length + 1, null, "建树完成，可以进行前序、中序、后序遍历和表达式求值。", 1);
+        takeSnapshot(tokens.length + 1, null, "建树完成，可以进行前序、中序、后序遍历和表达式求值。", 18);
         return snapshots;
       }
 
@@ -654,7 +744,13 @@
           const el = document.createElement("div");
           el.className = "pseudo-line";
           if (index === snapshot.activePseudo) el.classList.add("active");
-          el.textContent = line;
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          el.append(number, code);
           pseudoList.appendChild(el);
         });
       }
@@ -756,7 +852,6 @@
         nodeStat.textContent = String(countNodes(snapshot.root));
         stepText.textContent = snapshot.message;
         speedValue.textContent = `${speedInput.value} 步/秒`;
-        exampleValue.textContent = `示例 ${exampleSelect.selectedIndex + 1}`;
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
 
