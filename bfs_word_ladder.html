@@ -145,6 +145,8 @@
       box-shadow: var(--shadow);
     }
 
+    select { text-align: center; text-align-last: center; }
+
     button {
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -212,10 +214,14 @@
       display: grid;
       grid-template-columns: minmax(0, 720px) minmax(250px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .plot-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -278,7 +284,6 @@
       line-height: 1.65;
       color: #1f2937;
       padding-bottom: 10px;
-      border-bottom: 1px solid var(--line);
     }
 
     .distance-list {
@@ -286,9 +291,17 @@
       gap: 8px;
     }
 
+    .distance-header {
+      border: none;
+      background: transparent;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
     .distance-item {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(45px, auto) minmax(30px, auto) 1fr;
       gap: 10px;
       align-items: center;
       padding: 8px 10px;
@@ -307,23 +320,81 @@
       border-color: #bae6fd;
     }
 
+    .legend {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid #94a3b8;
+      background: #ffffff;
+    }
+
+    .legend-swatch.visited { background: #e0f2fe; border-color: #0284c7; }
+    .legend-swatch.queued { background: #fef3c7; border-color: #d97706; }
+    .legend-swatch.current { background: #fed7aa; border-color: #c2410c; }
+    .legend-swatch.path { background: #dcfce7; border-color: #15803d; }
+
+    .code-title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
     .pseudo {
       display: grid;
       gap: 6px;
       margin-top: 14px;
       font-size: 12px;
       color: #374151;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
     }
 
     .pseudo-line {
-      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 6px 12px;
       background: #f9fafb;
-      border: 1px solid #eef2f7;
+      border-left: 3px solid transparent;
     }
 
     .pseudo-line.active {
       background: #fff7ed;
-      border-color: #fdba74;
+      border-left-color: #fdba74;
+    }
+
+    .line-number {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .line-code {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
     }
 
     @media (max-width: 980px) {
@@ -341,7 +412,8 @@
       }
       .button-stack,
       .slider-wrap,
-      .select-wrap {
+      .select-wrap,
+      .legend {
         max-width: none;
       }
     }
@@ -358,7 +430,8 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>图中的每个节点是一个四字母单词；若两个单词只差一个字母，就连一条边。BFS 会从起点单词出发，用队列按层扩展，因此第一次到达目标单词时得到的一定是最短词梯。</p>
+      <p>BFS 词梯问题：每次只能改变一个字母，求从起点单词变换到目标单词的最短路径。图中的每个节点是一个四字母单词，若两个单词只差一个字母就连一条边。</p>
+      <p>BFS 从起点出发，用队列按层扩展，第一次到达目标单词时得到的路径一定是最短词梯。页面会高亮展示当前节点、队列、已访问节点和最终路径。</p>
     </section>
 
     <section class="controls">
@@ -367,7 +440,6 @@
         <div class="content">
           <div class="select-wrap">
             <select id="sourceSelect"></select>
-            <div id="sourceValue" class="select-value">fool</div>
           </div>
         </div>
       </div>
@@ -377,7 +449,6 @@
         <div class="content">
           <div class="select-wrap">
             <select id="targetSelect"></select>
-            <div id="targetValue" class="select-value">sage</div>
           </div>
         </div>
       </div>
@@ -427,6 +498,12 @@
     <section class="main">
       <div class="plot-shell">
         <svg id="graphSvg" viewBox="0 0 720 520" aria-label="word ladder graph"></svg>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch visited"></span>已访问</span>
+          <span class="legend-item"><span class="legend-swatch queued"></span>已在队列</span>
+          <span class="legend-item"><span class="legend-swatch current"></span>当前节点</span>
+          <span class="legend-item"><span class="legend-swatch path"></span>最短路径</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -446,6 +523,7 @@
         <h3>访问表</h3>
         <div id="distanceList" class="distance-list"></div>
 
+        <h3 class="code-title">Python 代码</h3>
         <div id="pseudoList" class="pseudo"></div>
       </aside>
     </section>
@@ -459,16 +537,24 @@
       ];
 
       const pseudoLines = [
-        "把起点加入队列，并标记为已访问",
-        "取出队首节点作为当前节点",
-        "扫描当前节点的所有相邻单词",
-        "若相邻单词未访问，则入队并记录前驱"
+        "def bfs_word_ladder(start, target):",
+        "    queue = deque([start])",
+        "    visited = {start}",
+        "    prev = {start: None}",
+        "    while queue:",
+        "        current = queue.popleft()",
+        "        if current == target:",
+        "            return reconstruct(prev, target)",
+        "        for neighbor in graph[current]:",
+        "            if neighbor not in visited:",
+        "                visited.add(neighbor)",
+        "                prev[neighbor] = current",
+        "                queue.append(neighbor)",
+        "    return None"
       ];
 
       const sourceSelect = document.getElementById("sourceSelect");
       const targetSelect = document.getElementById("targetSelect");
-      const sourceValue = document.getElementById("sourceValue");
-      const targetValue = document.getElementById("targetValue");
       const speedInput = document.getElementById("speedInput");
       const speedValue = document.getElementById("speedValue");
       const toggleRunButton = document.getElementById("toggleRunButton");
@@ -630,8 +716,6 @@
       }
 
       function updateTopLabels() {
-        sourceValue.textContent = state.source;
-        targetValue.textContent = state.target;
         speedValue.textContent = `${speedInput.value} 步/秒`;
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
@@ -661,7 +745,7 @@
         if (state.queue.length === 0) {
           state.finished = true;
           state.stepMessage = `队列已空，未找到从 ${state.source} 到 ${state.target} 的词梯。`;
-          state.activePseudo = 1;
+          state.activePseudo = 13;
           state.running = false;
           stopTimer();
           render();
@@ -671,7 +755,7 @@
         state.current = state.queue.shift();
         state.stepCount += 1;
         state.highlightedEdges = new Set();
-        state.activePseudo = 1;
+        state.activePseudo = 5;
 
         if (state.current === state.target) {
           state.found = true;
@@ -684,10 +768,10 @@
         }
 
         const discovered = [];
-        state.activePseudo = 2;
+        state.activePseudo = 8;
         for (const neighbor of state.adjacency.get(state.current)) {
           if (!state.visited.has(neighbor)) {
-            state.activePseudo = 3;
+            state.activePseudo = 9;
             state.visited.add(neighbor);
             state.previous[neighbor] = state.current;
             state.distance[neighbor] = state.distance[state.current] + 1;
@@ -759,19 +843,37 @@
 
       function renderDistanceList() {
         distanceList.innerHTML = "";
+
+        const header = document.createElement("div");
+        header.className = "distance-item distance-header";
+        ["单词", "距离", "前驱"].forEach((label) => {
+          const span = document.createElement("span");
+          span.textContent = label;
+          header.appendChild(span);
+        });
+        distanceList.appendChild(header);
+
         words.slice().sort().forEach((word) => {
           const item = document.createElement("div");
           item.className = "distance-item";
           if (state.current === word) item.classList.add("current");
           else if (state.visited.has(word)) item.classList.add("visited");
 
-          const left = document.createElement("span");
-          const prevText = state.previous[word] ? ` ← ${state.previous[word]}` : "";
-          left.textContent = `${word}${prevText}`;
-          const right = document.createElement("strong");
-          right.textContent = Number.isFinite(state.distance[word]) ? String(state.distance[word]) : "∞";
-          item.appendChild(left);
-          item.appendChild(right);
+          const wordSpan = document.createElement("strong");
+          wordSpan.textContent = word;
+
+          const distSpan = document.createElement("span");
+          distSpan.textContent = Number.isFinite(state.distance[word]) ? String(state.distance[word]) : "∞";
+          distSpan.style.fontWeight = "700";
+
+          const prevSpan = document.createElement("span");
+          prevSpan.textContent = state.previous[word] || "—";
+
+          if (word === state.source) prevSpan.textContent = "起点";
+
+          item.appendChild(wordSpan);
+          item.appendChild(distSpan);
+          item.appendChild(prevSpan);
           distanceList.appendChild(item);
         });
       }
@@ -782,7 +884,13 @@
           const el = document.createElement("div");
           el.className = "pseudo-line";
           if (index === state.activePseudo) el.classList.add("active");
-          el.textContent = line;
+          const number = document.createElement("div");
+          number.className = "line-number";
+          number.textContent = String(index + 1);
+          const code = document.createElement("div");
+          code.className = "line-code";
+          code.textContent = line;
+          el.append(number, code);
           pseudoList.appendChild(el);
         });
       }
