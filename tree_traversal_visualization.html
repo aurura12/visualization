@@ -112,7 +112,7 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
       max-width: 210px;
@@ -132,6 +132,8 @@
       box-shadow: var(--shadow);
       width: 100%;
     }
+
+    select { text-align: center; text-align-last: center; }
 
     button {
       cursor: pointer;
@@ -228,10 +230,14 @@
       display: grid;
       grid-template-columns: minmax(0, 660px) minmax(360px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .plot-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -259,13 +265,20 @@
 
     .step-text,
     .stack-box,
-    .order-box,
     .result-box {
       font-size: 13px;
       line-height: 1.65;
       color: #1f2937;
       padding-bottom: 10px;
       border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
+    .order-box {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+      padding-bottom: 10px;
       margin-bottom: 12px;
     }
 
@@ -291,11 +304,18 @@
     }
 
     .legend {
+      position: absolute;
+      top: 14px;
+      right: 14px;
       display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: 6px;
+      margin: 0;
+      padding: 8px 10px;
       font-size: 12px;
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
     }
 
     .legend-item {
@@ -366,14 +386,35 @@
     }
 
     .input-wrap {
+      position: relative;
       display: flex;
-      flex-direction: row;
+      justify-content: center;
       align-items: center;
-      gap: 8px;
+      width: 100%;
+      height: 38px;
     }
 
     .input-wrap input {
       width: 100px;
+      height: 38px;
+      box-sizing: border-box;
+    }
+
+    .input-wrap button {
+      position: absolute;
+      left: calc(50% + 50px + 4px);
+      width: 90px;
+      height: 38px;
+      box-sizing: border-box;
+      white-space: nowrap;
+    }
+
+    #nodeCountControl h3 {
+      text-align: center;
+    }
+
+    #nodeCountControl .content {
+      align-items: center;
     }
   </style>
 </head>
@@ -408,7 +449,7 @@
         </div>
       </div>
 
-      <div class="control">
+      <div class="control" id="nodeCountControl">
         <h3>节点数</h3>
         <div class="content">
           <div class="input-wrap">
@@ -425,7 +466,6 @@
             <button id="toggleRunButton" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
             <button id="resetButton" type="button">重置</button>
-            <button id="switchButton" type="button">切换模式</button>
           </div>
         </div>
       </div>
@@ -455,6 +495,11 @@
     <section class="main">
       <div class="plot-shell">
         <svg id="treeSvg" viewBox="0 0 720 420" aria-label="tree traversal"></svg>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch pending"></span>待访问节点</span>
+          <span class="legend-item"><span class="swatch current"></span>当前访问节点</span>
+          <span class="legend-item"><span class="swatch done"></span>已访问节点</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -475,17 +520,6 @@
           <h3>访问序列</h3>
           <div id="orderText">尚未开始。</div>
         </div>
-
-        <div class="result-box">
-          <h3>遍历特点</h3>
-          <div id="resultText">前序：根在前；中序：根在中；后序：根在后。</div>
-        </div>
-
-        <div class="legend">
-          <span class="legend-item"><span class="swatch pending"></span>待访问节点</span>
-          <span class="legend-item"><span class="swatch current"></span>当前访问节点</span>
-          <span class="legend-item"><span class="swatch done"></span>已访问节点</span>
-        </div>
       </aside>
     </section>
   </main>
@@ -498,7 +532,6 @@
       const stepButton = document.getElementById("stepButton");
       const randomizeButton = document.getElementById("randomizeButton");
       const resetButton = document.getElementById("resetButton");
-      const switchButton = document.getElementById("switchButton");
       const currentStat = document.getElementById("currentStat");
       const countStat = document.getElementById("countStat");
       const stepStat = document.getElementById("stepStat");
@@ -508,7 +541,6 @@
       const stepText = document.getElementById("stepText");
       const orderText = document.getElementById("orderText");
       const stackText = document.getElementById("stackText");
-      const resultText = document.getElementById("resultText");
       const pseudoList = document.getElementById("pseudoList");
 
       const pythonCode = {
@@ -824,14 +856,6 @@
         orderText.textContent = step.visited.length ? step.visited.join(" → ") : "尚未开始。";
         stackText.textContent = step.stack && step.stack.length ? step.stack.join(" → ") : "尚未开始。";
 
-        if (modeSelect.value === "preorder") {
-          resultText.textContent = "前序遍历：先访问根节点，再访问左子树，最后访问右子树。";
-        } else if (modeSelect.value === "inorder") {
-          resultText.textContent = "中序遍历：先访问左子树，再访问根节点，最后访问右子树。";
-        } else {
-          resultText.textContent = "后序遍历：先访问左子树，再访问右子树，最后访问根节点。";
-        }
-
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
 
@@ -897,13 +921,6 @@
         stopTimer();
         state.index = 0;
         render();
-      });
-
-      switchButton.addEventListener("click", () => {
-        const order = ["preorder", "inorder", "postorder"];
-        const currentIndex = order.indexOf(modeSelect.value);
-        modeSelect.value = order[(currentIndex + 1) % order.length];
-        rebuild();
       });
 
       rebuild();
