@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>最小生成树可视化</title>
+  <style>
+    :root {
+      --bg: #ffffff; --text: #111827; --muted: #4b5563;
+      --line: #e5e7eb; --accent: #3db3d8;
+      --button-bg: #ffffff; --button-border: #d1d5db;
+      --shadow: 0 1px 2px rgba(0,0,0,0.04);
+      --node: #ffffff; --node-in-tree: #dcfce7;
+      --node-current: #fed7aa; --node-pending: #e0f2fe;
+      --edge: #9ca3af; --edge-added: #16a34a;
+      --edge-current: #f59e0b; --edge-rejected: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+    body { padding: 20px 24px 28px; }
+    .page { max-width: 1140px; margin: 0 auto; }
+    .head { margin-bottom: 12px; }
+    .head h1 { margin: 0; font-size: clamp(30px,3.3vw,42px); font-weight: 400; letter-spacing: -0.02em; line-height: 1.1; }
+    .head p { margin: 10px 0 0; font-size: 15px; color: var(--muted); line-height: 1.45; }
+    .rule { height: 1px; background: var(--line); margin: 18px 0 22px; }
+    .info-card { position: relative; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 18px 22px 16px; margin-bottom: 18px; }
+    .info-card::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; background: var(--accent); }
+    .info-card h2 { margin: 0 0 8px; font-size: 19px; font-weight: 500; }
+    .info-card p { margin: 0; font-size: 13px; line-height: 1.6; color: #1f2937; }
+    .controls { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 16px; margin-bottom: 16px; align-items: start; }
+    .control h3 { margin: 0 0 10px; font-size: 18px; font-weight: 400; text-align: center; }
+    .control .content { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .button-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 210px; }
+    button, select { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
+    select { text-align: center; text-align-last: center; }
+    button { cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
+    button:hover, select:hover { background: #f8fafc; border-color: #cbd5e1; }
+    button:hover { transform: translateY(-1px); }
+    .slider-wrap, .select-wrap { width: 100%; max-width: 220px; display: grid; justify-items: center; gap: 8px; }
+    input[type="range"] { width: 100%; accent-color: #f8b84e; }
+    .slider-value { font-size: 14px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 4px 0 16px; }
+    .stat { text-align: center; padding: 12px 10px 10px; border: 1px solid var(--line); background: #fff; }
+    .stat .label { font-size: 14px; color: #1f2937; margin-bottom: 8px; }
+    .stat .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .main { display: grid; grid-template-columns: minmax(0,620px) minmax(440px,1fr); gap: 16px; align-items: stretch; }
+    .plot-shell { position: relative; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 8px; }
+    svg { display: block; width: 100%; aspect-ratio: 720 / 610; }
+    .side-panel { border: 1px solid var(--line); background: #fff; box-shadow: var(--shadow); padding: 14px; }
+    .side-panel h3 { margin: 0 0 10px; font-size: 17px; font-weight: 500; }
+    .step-text { font-size: 13px; line-height: 1.65; color: #1f2937; padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 12px; min-height: 52px; }
+    .mst-info, .decision-box { font-size: 13px; line-height: 1.65; color: #1f2937; padding-bottom: 10px; margin-bottom: 12px; }
+    .mst-edges { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; margin-top: 6px; }
+    .mst-chip { padding: 4px 8px; border-radius: 999px; background: #f0fdf4; border: 1px solid #86efac; color: #166534; font-size: 12px; font-weight: 600; }
+    .code-title { margin: 0 0 8px; font-size: 16px; font-weight: 500; }
+    .code-block { margin-bottom: 12px; border: 1px solid var(--line); background: #f8fafc; padding: 8px 0; overflow: hidden; }
+    .pseudo { display: grid; gap: 6px; font-size: 12px; color: #374151; font-family: "Cascadia Code","Consolas","Courier New",monospace; }
+    .pseudo-line { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: start; padding: 6px 12px; background: #f9fafb; border-left: 3px solid transparent; }
+    .pseudo-line.active { background: #fff7ed; border-left-color: #fdba74; }
+    .line-number { color: #94a3b8; text-align: right; user-select: none; }
+    .line-code { white-space: pre-wrap; overflow-wrap: break-word; }
+    .legend { position: absolute; top: 14px; right: 14px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin: 0; padding: 6px 10px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,0.9); border: 1px solid var(--line); border-radius: 6px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #94a3b8; background: #fff; }
+    .legend-swatch.mst { background: #dcfce7; border-color: #16a34a; }
+    .legend-swatch.current { background: #fed7aa; border-color: #c2410c; }
+    .legend-swatch.rejected { background: #fee2e2; border-color: #dc2626; }
+    .legend-swatch.normal { background: #fff; border-color: #9ca3af; }
+    @media (max-width: 980px) {
+      body { padding: 18px 16px 24px; }
+      .controls, .stats, .main { grid-template-columns: 1fr; }
+      .control h3 { text-align: left; }
+      .control .content { align-items: stretch; }
+      .button-stack, .slider-wrap, .select-wrap, .legend { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="head">
+    <h1>最小生成树可视化</h1>
+    <p>比较 Prim 算法和 Kruskal 算法构造最小生成树的过程。</p>
+  </header>
+  <div class="rule"></div>
+
+  <section class="info-card">
+    <h2>说明</h2>
+    <p><strong>最小生成树（MST）</strong>：在连通带权无向图中，找出一棵包含所有顶点且边权总和最小的树。</p>
+    <p><strong>Prim 算法</strong>：从任意顶点出发，每次选择连接"已在树中"和"不在树中"的最小权值边，将新顶点加入树中。适用于稠密图。</p>
+    <p><strong>Kruskal 算法</strong>：将所有边按权值从小到大排序，依次尝试加入，若不会形成环则保留，否则跳过。适用于稀疏图。</p>
+  </section>
+
+  <section class="controls">
+    <div class="control">
+      <h3>算法</h3>
+      <div class="content">
+        <div class="select-wrap">
+          <select id="algoSelect">
+            <option value="prim">Prim 算法</option>
+            <option value="kruskal">Kruskal 算法</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="control">
+      <h3>节点数</h3>
+      <div class="content">
+        <div class="slider-wrap">
+          <input id="nodeCount" type="range" min="5" max="10" step="1" value="7">
+          <div id="nodeCountVal" class="slider-value">7</div>
+        </div>
+      </div>
+    </div>
+    <div class="control">
+      <h3>操作</h3>
+      <div class="content">
+        <div class="button-stack">
+          <button id="toggleRun" type="button">开始</button>
+          <button id="stepBtn" type="button">单步</button>
+          <button id="resetBtn" type="button">重置</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><div class="label">当前选中边</div><div id="currentEdge" class="value">-</div></div>
+    <div class="stat"><div class="label">MST 边数</div><div id="mstEdgeCount" class="value">0 / 6</div></div>
+    <div class="stat"><div class="label">MST 权值和</div><div id="mstWeight" class="value">0</div></div>
+    <div class="stat"><div class="label">状态</div><div id="statusStat" class="value">未开始</div></div>
+  </section>
+
+  <section class="main">
+    <div class="plot-shell">
+      <svg id="graphSvg" viewBox="0 -130 720 610" aria-label="MST graph"></svg>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch normal"></span>未选定边</span>
+        <span class="legend-item"><span class="legend-swatch current"></span>当前边</span>
+        <span class="legend-item"><span class="legend-swatch mst"></span>MST 边</span>
+        <span class="legend-item"><span class="legend-swatch rejected"></span>已跳过</span>
+      </div>
+    </div>
+
+    <aside class="side-panel">
+      <h3>过程说明</h3>
+      <div id="stepText" class="step-text"></div>
+
+      <h3 class="code-title">Python 代码</h3>
+      <div class="code-block"><div id="pseudoList" class="pseudo"></div></div>
+
+      <div class="decision-box">
+        <h3>当前决策</h3>
+        <div id="decisionText">等待开始。</div>
+      </div>
+
+      <div class="mst-info">
+        <h3>MST 边集</h3>
+        <div id="mstEdgeList" class="mst-edges"></div>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<script>
+(() => {
+  const algoSelect = document.getElementById("algoSelect");
+  const nodeCount = document.getElementById("nodeCount");
+  const nodeCountVal = document.getElementById("nodeCountVal");
+  const toggleRun = document.getElementById("toggleRun");
+  const stepBtn = document.getElementById("stepBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const currentEdge = document.getElementById("currentEdge");
+  const mstEdgeCount = document.getElementById("mstEdgeCount");
+  const mstWeight = document.getElementById("mstWeight");
+  const statusStat = document.getElementById("statusStat");
+  const graphSvg = document.getElementById("graphSvg");
+  const stepText = document.getElementById("stepText");
+  const decisionText = document.getElementById("decisionText");
+  const mstEdgeList = document.getElementById("mstEdgeList");
+  const pseudoList = document.getElementById("pseudoList");
+
+  const labels = "ABCDEFGHIJ".split("");
+
+  const state = {
+    nodes: [], edges: [], steps: [], index: 0,
+    running: false, timer: null
+  };
+
+  function makeGraph(n) {
+    const nodes = [];
+    const cx = 360, cy = 240, r = Math.min(n, 8) <= 6 ? 190 : 210;
+    for (let i = 0; i < n; i++) {
+      const angle = -Math.PI / 2 + (Math.PI * 2 * i) / n;
+      nodes.push({ id: labels[i], x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+    }
+    const edgeSet = new Set();
+    const edges = [];
+    function addEdge(a, b) {
+      const k = [a, b].sort().join("-");
+      if (edgeSet.has(k)) return;
+      edgeSet.add(k);
+      edges.push({ from: labels[a], to: labels[b], weight: 1 + Math.floor(Math.random() * 9), id: k });
+    }
+    for (let i = 1; i < n; i++) addEdge(Math.floor(Math.random() * i), i);
+    const total = (n * (n - 1)) / 2;
+    const target = Math.min(total, Math.max(n + 2, Math.floor(total * 0.5)));
+    let att = 0;
+    while (edges.length < target && att < total * 4) {
+      const a = Math.floor(Math.random() * n);
+      let b = Math.floor(Math.random() * n);
+      if (a === b) { att++; continue; }
+      const before = edges.length;
+      addEdge(a, b);
+      if (edges.length === before) att++;
+    }
+    return { nodes, edges: edges.sort((a, b) => a.weight - b.weight) };
+  }
+
+  const primCode = [
+    "def prim(graph, start):",
+    "    in_tree = {start}",
+    "    edges = []",
+    "    candidates = [(w, start, v) for v, w in graph[start]]",
+    "    heapify(candidates)",
+    "    while len(in_tree) < len(graph):",
+    "        w, u, v = heappop(candidates)",
+    "        if v in in_tree: continue",
+    "        edges.append((u, v, w))",
+    "        in_tree.add(v)",
+    "        for nb, wt in graph[v]:",
+    "            if nb not in in_tree:",
+    "                heappush(candidates, (wt, v, nb))",
+    "    return edges"
+  ];
+
+  const kruskalCode = [
+    "def kruskal(edges, n):",
+    "    parent = list(range(n))",
+    "    mst = []",
+    "    def find(x):",
+    "        while parent[x] != x:",
+    "            parent[x] = parent[parent[x]]",
+    "            x = parent[x]",
+    "        return x",
+    "    def union(a, b):",
+    "        ra, rb = find(a), find(b)",
+    "        if ra == rb: return False",
+    "        parent[ra] = rb",
+    "        return True",
+    "    for u, v, w in sorted(edges, key=lambda e: e[2]):",
+    "        if union(u, v):",
+    "            mst.append((u, v, w))",
+    "    return mst"
+  ];
+
+  function buildPrimSteps(graph) {
+    const steps = [];
+    const inTree = new Set();
+    const treeEdges = [];
+    const allEdges = [];
+    const nodeArr = graph.nodes.map(n => n.id);
+    const start = nodeArr[0];
+
+    inTree.add(start);
+    steps.push({ phase: "init", currentEdge: null, treeEdges: [], candidates: [], inTree: new Set([start]), message: `从顶点 ${start} 开始构造 MST。`, decision: `将 ${start} 加入树中。`, pseudo: 1, activeNode: start });
+
+    const adjMap = new Map();
+    nodeArr.forEach(id => adjMap.set(id, []));
+    graph.edges.forEach(e => {
+      adjMap.get(e.from).push({ to: e.to, w: e.weight, id: e.id });
+      adjMap.get(e.to).push({ to: e.from, w: e.weight, id: e.id });
+    });
+
+    const candidateHeap = [];
+    adjMap.get(start).forEach(nb => {
+      candidateHeap.push({ from: start, to: nb.to, weight: nb.w, id: nb.id });
+    });
+    candidateHeap.sort((a, b) => a.weight - b.weight);
+    steps.push({ phase: "candidates", currentEdge: null, treeEdges: treeEdges.slice(), candidates: candidateHeap.map(e => `${e.from}-${e.to}`), inTree: new Set(inTree), message: `将与 ${start} 相连的边加入候选集。`, decision: `候选边：${candidateHeap.map(e => e.id + "=" + e.weight).join("、")}`, pseudo: 9, activeNode: start });
+
+    while (inTree.size < nodeArr.length) {
+      if (candidateHeap.length === 0) break;
+      const best = candidateHeap.shift();
+      if (inTree.has(best.to)) {
+        steps.push({ phase: "skip", currentEdge: best, treeEdges: treeEdges.slice(), candidates: candidateHeap.map(e => `${e.from}-${e.to}`), inTree: new Set(inTree), message: `边 ${best.id}（权 ${best.weight}）连接已在树中的顶点 ${best.to}，跳过。`, decision: `跳过 ${best.id}。`, pseudo: 5, activeNode: best.to });
+        continue;
+      }
+      treeEdges.push(best);
+      inTree.add(best.to);
+      steps.push({ phase: "add", currentEdge: best, treeEdges: treeEdges.slice(), candidates: candidateHeap.map(e => `${e.from}-${e.to}`), inTree: new Set(inTree), message: `选择边 ${best.id}（权 ${best.weight}），将 ${best.to} 加入 MST。`, decision: `MST 当前总权值：${treeEdges.reduce((s, e) => s + e.weight, 0)}。`, pseudo: 6, activeNode: best.to });
+      if (inTree.size === nodeArr.length) break;
+      adjMap.get(best.to).forEach(nb => {
+        if (!inTree.has(nb.to)) {
+          candidateHeap.push({ from: best.to, to: nb.to, weight: nb.w, id: nb.id });
+        }
+      });
+      candidateHeap.sort((a, b) => a.weight - b.weight);
+      steps.push({ phase: "candidates", currentEdge: null, treeEdges: treeEdges.slice(), candidates: candidateHeap.map(e => `${e.from}-${e.to}`), inTree: new Set(inTree), message: `将 ${best.to} 的邻边加入候选集，重新排序。`, decision: `候选边：${candidateHeap.map(e => e.id + "=" + e.weight).join("、")}`, pseudo: 10, activeNode: best.to });
+    }
+    const totalW = treeEdges.reduce((s, e) => s + e.weight, 0);
+    steps.push({ phase: "done", currentEdge: null, treeEdges: treeEdges.slice(), candidates: [], inTree: new Set(nodeArr), message: `MST 构造完成，共 ${treeEdges.length} 条边，总权值 ${totalW}。`, decision: `MST 边集：${treeEdges.map(e => e.id).join("、")}`, pseudo: 12, activeNode: null });
+    return steps;
+  }
+
+  function buildKruskalSteps(graph) {
+    const steps = [];
+    const nodeIds = graph.nodes.map(n => n.id);
+    const parent = {};
+    nodeIds.forEach(id => parent[id] = id);
+    function find(x) {
+      while (parent[x] !== x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+      }
+      return x;
+    }
+    function union(a, b) {
+      const ra = find(a), rb = find(b);
+      if (ra === rb) return false;
+      parent[ra] = rb;
+      return true;
+    }
+    const sortedEdges = graph.edges.slice().sort((a, b) => a.weight - b.weight);
+    const treeEdges = [];
+
+    steps.push({ phase: "init", currentEdge: null, treeEdges: [], sortedIdx: 0, sortedEdges, message: `共有 ${sortedEdges.length} 条边，按权值从小到大排序。`, decision: `最小边：${sortedEdges[0].id}（权 ${sortedEdges[0].weight}）`, pseudo: 10, addedIds: new Set(), rejectedIds: new Set() });
+
+    for (let idx = 0; idx < sortedEdges.length; idx++) {
+      const e = sortedEdges[idx];
+      if (treeEdges.length === nodeIds.length - 1) {
+        steps.push({ phase: "done_early", currentEdge: null, treeEdges: treeEdges.slice(), sortedIdx: idx, sortedEdges, message: `已选出 ${nodeIds.length - 1} 条边，MST 构造完成。`, decision: `MST 边集：${treeEdges.map(e => e.id).join("、")}`, pseudo: 8, addedIds: new Set(treeEdges.map(e => e.id)), rejectedIds: new Set() });
+        break;
+      }
+      if (union(e.from, e.to)) {
+        treeEdges.push(e);
+        steps.push({ phase: "add", currentEdge: e, treeEdges: treeEdges.slice(), sortedIdx: idx, sortedEdges, message: `边 ${e.id}（权 ${e.weight}）加入后不形成环，纳入 MST。`, decision: `已选 ${treeEdges.length} 条边，总权值 ${treeEdges.reduce((s, ee) => s + ee.weight, 0)}。`, pseudo: 11, addedIds: new Set(treeEdges.map(ee => ee.id)), rejectedIds: new Set() });
+      } else {
+        steps.push({ phase: "reject", currentEdge: e, treeEdges: treeEdges.slice(), sortedIdx: idx, sortedEdges, message: `边 ${e.id}（权 ${e.weight}）会形成环，跳过。`, decision: `跳过 ${e.id}。`, pseudo: 7, addedIds: new Set(treeEdges.map(ee => ee.id)), rejectedIds: new Set([e.id]) });
+      }
+    }
+    const totalW = treeEdges.reduce((s, e) => s + e.weight, 0);
+    steps.push({ phase: "done", currentEdge: null, treeEdges: treeEdges.slice(), sortedIdx: sortedEdges.length, sortedEdges, message: `MST 构造完成，共 ${treeEdges.length} 条边，总权值 ${totalW}。`, decision: `MST 边集：${treeEdges.map(e => e.id).join("、")}`, pseudo: 13, addedIds: new Set(treeEdges.map(e => e.id)), rejectedIds: new Set() });
+    return steps;
+  }
+
+  function rebuild() {
+    const n = Number(nodeCount.value);
+    nodeCountVal.textContent = n;
+    const graph = makeGraph(n);
+    state.nodes = graph.nodes;
+    state.edges = graph.edges;
+    state.steps = algoSelect.value === "prim" ? buildPrimSteps(graph) : buildKruskalSteps(graph);
+    state.index = 0;
+    state.running = false;
+    stopTimer();
+    render();
+  }
+
+  function currentStep() {
+    return state.steps[Math.min(state.index, state.steps.length - 1)];
+  }
+
+  function render() {
+    const step = currentStep();
+    const isPrim = algoSelect.value === "prim";
+    const totalEdges = state.nodes.length - 1;
+
+    // SVG
+    graphSvg.innerHTML = "";
+    const addedSet = new Set(step.addedIds || (step.treeEdges || []).map(e => e.id));
+    const rejectedSet = new Set(step.rejectedIds || []);
+    const treeEdgeSet = new Set((step.treeEdges || []).map(e => e.id));
+
+    state.edges.forEach(e => {
+      const from = state.nodes.find(n => n.id === e.from);
+      const to = state.nodes.find(n => n.id === e.to);
+      let stroke = "#9ca3af", sw = 2;
+      if (treeEdgeSet.has(e.id) || addedSet.has(e.id)) { stroke = "#16a34a"; sw = 4; }
+      else if (rejectedSet.has(e.id)) { stroke = "#ef4444"; sw = 3; }
+      if (step.currentEdge && step.currentEdge.id === e.id && !treeEdgeSet.has(e.id)) { stroke = "#f59e0b"; sw = 4; }
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", from.x); line.setAttribute("y1", from.y);
+      line.setAttribute("x2", to.x); line.setAttribute("y2", to.y);
+      line.setAttribute("stroke", stroke); line.setAttribute("stroke-width", sw);
+      graphSvg.appendChild(line);
+      const lx = (from.x + to.x) / 2, ly = (from.y + to.y) / 2;
+      const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      bg.setAttribute("x", lx - 12); bg.setAttribute("y", ly - 13);
+      bg.setAttribute("width", 24); bg.setAttribute("height", 20);
+      bg.setAttribute("rx", 4); bg.setAttribute("fill", "#fff");
+      graphSvg.appendChild(bg);
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", lx); txt.setAttribute("y", ly);
+      txt.setAttribute("text-anchor", "middle"); txt.setAttribute("dominant-baseline", "middle");
+      txt.setAttribute("font-size", "13"); txt.setAttribute("fill", "#111827");
+      txt.textContent = String(e.weight);
+      graphSvg.appendChild(txt);
+    });
+
+    state.nodes.forEach(n => {
+      const inTree = step.inTree && step.inTree.has(n.id);
+      const isCurrent = step.currentEdge && (step.currentEdge.from === n.id || step.currentEdge.to === n.id);
+      const isActive = step.activeNode === n.id;
+      let fill = "#fff", stroke = "#111827", sw = 2;
+      if (step.phase === "done" || (step.phase === "done_early")) { fill = "#dcfce7"; stroke = "#16a34a"; sw = 3; }
+      else if (isActive) { fill = "#fed7aa"; stroke = "#c2410c"; sw = 3; }
+      else if (inTree) { fill = "#e0f2fe"; stroke = "#0284c7"; }
+      else if (isCurrent) { fill = "#fef3c7"; stroke = "#d97706"; sw = 3; }
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", n.x); circle.setAttribute("cy", n.y);
+      circle.setAttribute("r", 24); circle.setAttribute("fill", fill);
+      circle.setAttribute("stroke", stroke); circle.setAttribute("stroke-width", sw);
+      graphSvg.appendChild(circle);
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", n.x); label.setAttribute("y", n.y + 5);
+      label.setAttribute("text-anchor", "middle"); label.setAttribute("font-size", "16");
+      label.setAttribute("font-weight", "700"); label.setAttribute("fill", "#111827");
+      label.textContent = n.id;
+      graphSvg.appendChild(label);
+    });
+
+    // Stats & text
+    const ce = step.currentEdge;
+    currentEdge.textContent = ce ? `${ce.id}（权 ${ce.weight}）` : "-";
+    mstEdgeCount.textContent = `${step.treeEdges ? step.treeEdges.length : 0} / ${totalEdges}`;
+    mstWeight.textContent = step.treeEdges ? String(step.treeEdges.reduce((s, e) => s + e.weight, 0)) : "0";
+    statusStat.textContent = state.running ? "自动播放" : (state.index === 0 ? "未开始" : "执行中");
+    stepText.textContent = step.message;
+    decisionText.textContent = step.decision;
+    toggleRun.textContent = state.running ? "暂停" : "开始";
+
+    // Pseudo
+    const code = isPrim ? primCode : kruskalCode;
+    pseudoList.innerHTML = "";
+    code.forEach((line, idx) => {
+      const el = document.createElement("div"); el.className = "pseudo-line";
+      if (idx === step.pseudo) el.classList.add("active");
+      const num = document.createElement("div"); num.className = "line-number"; num.textContent = String(idx + 1);
+      const cd = document.createElement("div"); cd.className = "line-code"; cd.textContent = line;
+      el.append(num, cd); pseudoList.appendChild(el);
+    });
+
+    // MST edge list
+    mstEdgeList.innerHTML = "";
+    if (!step.treeEdges || step.treeEdges.length === 0) {
+      const chip = document.createElement("span"); chip.className = "mst-chip";
+      chip.textContent = "暂无"; mstEdgeList.appendChild(chip);
+    } else {
+      step.treeEdges.forEach(e => {
+        const chip = document.createElement("span"); chip.className = "mst-chip";
+        chip.textContent = `${e.id}=${e.weight}`; mstEdgeList.appendChild(chip);
+      });
+    }
+  }
+
+  function stopTimer() { if (state.timer !== null) { clearTimeout(state.timer); state.timer = null; } }
+  function advance() {
+    if (state.index < state.steps.length - 1) { state.index++; render(); }
+    else { state.running = false; stopTimer(); render(); }
+  }
+  function scheduleNext() {
+    stopTimer(); if (!state.running) return;
+    state.timer = setTimeout(() => { advance(); if (state.running) scheduleNext(); }, 680);
+  }
+
+  algoSelect.addEventListener("change", rebuild);
+  nodeCount.addEventListener("input", rebuild);
+  toggleRun.addEventListener("click", () => {
+    if (state.index >= state.steps.length - 1) state.index = 0;
+    state.running = !state.running; render();
+    if (state.running) scheduleNext(); else stopTimer();
+  });
+  stepBtn.addEventListener("click", () => { state.running = false; stopTimer(); advance(); });
+  resetBtn.addEventListener("click", () => { state.running = false; stopTimer(); state.index = 0; render(); });
+
+  rebuild();
+})();
+</script>
+</body>
+</html>
