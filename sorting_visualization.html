@@ -35,7 +35,7 @@
     }
 
     .page {
-      max-width: 1020px;
+      max-width: 1160px;
       margin: 0 auto;
     }
 
@@ -141,6 +141,8 @@
       box-shadow: var(--shadow);
     }
 
+    select { text-align: center; text-align-last: center; }
+
     button {
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
@@ -206,12 +208,16 @@
 
     .main {
       display: grid;
-      grid-template-columns: minmax(0, 560px) minmax(420px, 1fr);
+      grid-template-columns: minmax(0, 620px) minmax(460px, 1fr);
       gap: 16px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .plot-shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -258,11 +264,20 @@
     }
 
     .legend {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 12px;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 0;
+      padding: 6px 10px;
       font-size: 12px;
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 6px;
     }
 
     .legend-item {
@@ -308,6 +323,17 @@
       font-weight: 500;
     }
 
+    .algo-desc {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+    }
+
+    .algo-desc h3 {
+      margin: 0 0 6px;
+    }
+
     .pseudo {
       display: grid;
       gap: 6px;
@@ -339,7 +365,7 @@
 
     .line-code {
       white-space: pre-wrap;
-      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     @media (max-width: 980px) {
@@ -374,7 +400,7 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>选择算法后，可以单步执行或自动播放。柱形条代表数组元素，黄色表示当前比较，橙色表示发生交换或写回，绿色表示已经处于最终有序位置的元素。</p>
+      <p>选择算法后，可以单步执行或自动播放。柱形条代表列表元素，黄色表示当前比较，橙色表示发生交换或写回，绿色表示已经处于最终有序位置的元素。</p>
     </section>
 
     <section class="controls">
@@ -388,13 +414,12 @@
               <option value="insertion">插入排序</option>
               <option value="merge">归并排序</option>
             </select>
-            <div id="algorithmValue" class="select-value">冒泡排序</div>
           </div>
         </div>
       </div>
 
       <div class="control">
-        <h3>数组规模</h3>
+        <h3>数据规模</h3>
         <div class="content">
           <div class="slider-wrap">
             <input id="sizeInput" type="range" min="6" max="18" step="1" value="10" />
@@ -437,8 +462,14 @@
 
     <section class="main">
       <div class="plot-shell">
-        <svg id="barsSvg" viewBox="0 0 720 420" aria-label="sorting bars"></svg>
+        <svg id="barsSvg" viewBox="0 0 720 580" aria-label="sorting bars"></svg>
         <div id="arrayStrip" class="array-strip"></div>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch"></span>普通元素</span>
+          <span class="legend-item"><span class="swatch compare"></span>当前比较</span>
+          <span class="legend-item"><span class="swatch swap"></span>交换/写回</span>
+          <span class="legend-item"><span class="swatch sorted"></span>已确定有序</span>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -448,11 +479,9 @@
         <div class="code-block">
           <div id="pseudoList" class="pseudo"></div>
         </div>
-        <div class="legend">
-          <span class="legend-item"><span class="swatch"></span>普通元素</span>
-          <span class="legend-item"><span class="swatch compare"></span>当前比较</span>
-          <span class="legend-item"><span class="swatch swap"></span>交换/写回</span>
-          <span class="legend-item"><span class="swatch sorted"></span>已确定有序</span>
+        <div class="algo-desc">
+          <h3>算法说明</h3>
+          <div id="algoDescText">选择算法后，此处将显示该排序方式的简要说明。</div>
         </div>
       </aside>
     </section>
@@ -461,7 +490,6 @@
   <script>
     (() => {
       const algorithmSelect = document.getElementById("algorithmSelect");
-      const algorithmValue = document.getElementById("algorithmValue");
       const sizeInput = document.getElementById("sizeInput");
       const sizeValue = document.getElementById("sizeValue");
       const toggleRunButton = document.getElementById("toggleRunButton");
@@ -476,12 +504,24 @@
       const arrayStrip = document.getElementById("arrayStrip");
       const stepText = document.getElementById("stepText");
       const pseudoList = document.getElementById("pseudoList");
+      const algoDescText = document.getElementById("algoDescText");
 
       const algorithmNames = {
         bubble: "冒泡排序",
         selection: "选择排序",
         insertion: "插入排序",
         merge: "归并排序"
+      };
+
+      const algorithmDescriptions = {
+        bubble:
+          "重复扫描列表，依次比较相邻元素，顺序错误则交换。每次遍历将当前未排序部分的最大值「冒泡」到末尾。时间复杂度 O(n²)。",
+        selection:
+          "每次从未排序部分选出最小值，与未排序部分的首元素交换，逐步构建有序前缀。时间复杂度 O(n²)。",
+        insertion:
+          "将未排序元素逐个插入到已排序部分的正确位置，如同整理扑克牌。时间复杂度 O(n²)，对于近乎有序的列表可接近 O(n)。",
+        merge:
+          "采用分治策略：将列表递归分成两半分别排序，再将两个有序子列表合并。时间复杂度 O(n log n)，需要 O(n) 辅助空间。"
       };
 
       const pythonCode = {
@@ -565,7 +605,7 @@
               compares,
               swaps,
               message: `比较位置 ${i} 和 ${i + 1}。`,
-              line: 1
+              line: 2
             }));
             if (arr[i] > arr[i + 1]) {
               [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
@@ -577,7 +617,7 @@
                 compares,
                 swaps,
                 message: `交换位置 ${i} 和 ${i + 1}。`,
-                line: 2
+                line: 3
               }));
             }
           }
@@ -620,7 +660,7 @@
               compares,
               swaps,
               message: `比较当前最小值位置 ${minIndex} 与位置 ${j}。`,
-              line: 2
+              line: 3
             }));
             if (arr[j] < arr[minIndex]) {
               minIndex = j;
@@ -785,7 +825,7 @@
                 sorted: [],
                 compares,
                 swaps,
-                message: `比较左右子数组元素 ${aux[i]} 和 ${aux[j]}。`,
+                message: `比较左右子列表元素 ${aux[i]} 和 ${aux[j]}。`,
                 line: 4
               }));
               if (aux[i] <= aux[j]) {
@@ -843,9 +883,9 @@
       }
 
       function updateLabels() {
-        algorithmValue.textContent = algorithmNames[algorithmSelect.value];
         sizeValue.textContent = sizeInput.value;
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
+        algoDescText.textContent = algorithmDescriptions[algorithmSelect.value];
       }
 
       function currentStep() {
@@ -856,12 +896,13 @@
         updateLabels();
         const step = currentStep();
         const values = step.array;
-        const width = 720;
-        const height = 420;
+      const width = 720;
+      const height = 580;
         const paddingX = 18;
+        const paddingTop = 130;
         const paddingBottom = 30;
         const barGap = 6;
-        const chartHeight = height - 50;
+        const chartHeight = height - paddingTop - paddingBottom;
         const maxValue = Math.max(...values, 1);
         const barWidth = (width - paddingX * 2 - barGap * (values.length - 1)) / values.length;
 
@@ -914,7 +955,7 @@
         swapStat.textContent = String(step.swaps);
         statusStat.textContent = state.running ? "自动播放" : (state.stepIndex === 0 ? "未开始" : (state.stepIndex >= state.steps.length - 1 ? "已完成" : "暂停"));
         stepText.textContent = step.message;
-        arrayStrip.textContent = `当前数组：${values.join(" , ")}`;
+        arrayStrip.textContent = `当前列表：${values.join(" , ")}`;
         renderPseudo(step.line);
       }
 
