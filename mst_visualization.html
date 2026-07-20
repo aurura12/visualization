@@ -31,12 +31,16 @@
     .control h3 { margin: 0 0 10px; font-size: 18px; font-weight: 400; text-align: center; }
     .control .content { display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .button-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 210px; }
-    button, select { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
+    button, select, input[type="number"] { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
     select { text-align: center; text-align-last: center; }
+    input[type="number"] { color: #111827; }
     button { cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
     button:hover, select:hover { background: #f8fafc; border-color: #cbd5e1; }
     button:hover { transform: translateY(-1px); }
     .slider-wrap, .select-wrap { width: 100%; max-width: 220px; display: grid; justify-items: center; gap: 8px; }
+    .input-wrap { position: relative; display: flex; justify-content: center; align-items: center; width: 100%; height: 38px; }
+    .input-wrap input { width: 100px; height: 38px; box-sizing: border-box; }
+    .input-wrap button { position: absolute; left: calc(50% + 50px + 4px); width: 90px; height: 38px; box-sizing: border-box; white-space: nowrap; }
     input[type="range"] { width: 100%; accent-color: #f8b84e; }
     .slider-value { font-size: 14px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
     .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 4px 0 16px; }
@@ -71,7 +75,7 @@
       .controls, .stats, .main { grid-template-columns: 1fr; }
       .control h3 { text-align: left; }
       .control .content { align-items: stretch; }
-      .button-stack, .slider-wrap, .select-wrap, .legend { max-width: none; }
+      .button-stack, .slider-wrap, .select-wrap, .input-wrap, .legend { max-width: none; }
     }
   </style>
 </head>
@@ -105,9 +109,9 @@
     <div class="control">
       <h3>节点数</h3>
       <div class="content">
-        <div class="slider-wrap">
-          <input id="nodeCount" type="range" min="5" max="10" step="1" value="7">
-          <div id="nodeCountVal" class="slider-value">7</div>
+        <div class="input-wrap">
+          <input id="nodeCountInput" type="number" min="5" max="10" step="1" value="7" placeholder="建议范围 5 - 10" />
+          <button id="randomizeBtn" type="button">随机生成</button>
         </div>
       </div>
     </div>
@@ -164,8 +168,8 @@
 <script>
 (() => {
   const algoSelect = document.getElementById("algoSelect");
-  const nodeCount = document.getElementById("nodeCount");
-  const nodeCountVal = document.getElementById("nodeCountVal");
+  const nodeCountInput = document.getElementById("nodeCountInput");
+  const randomizeBtn = document.getElementById("randomizeBtn");
   const toggleRun = document.getElementById("toggleRun");
   const stepBtn = document.getElementById("stepBtn");
   const resetBtn = document.getElementById("resetBtn");
@@ -344,8 +348,8 @@
   }
 
   function rebuild() {
-    const n = Number(nodeCount.value);
-    nodeCountVal.textContent = n;
+    const n = Math.max(5, Math.min(10, Number(nodeCountInput.value) || 7));
+    nodeCountInput.value = String(n);
     const graph = makeGraph(n);
     state.nodes = graph.nodes;
     state.edges = graph.edges;
@@ -464,7 +468,11 @@
   }
 
   algoSelect.addEventListener("change", rebuild);
-  nodeCount.addEventListener("input", rebuild);
+  randomizeBtn.addEventListener("click", rebuild);
+  nodeCountInput.addEventListener("change", () => {
+    const n = Math.max(5, Math.min(10, Number(nodeCountInput.value) || 7));
+    nodeCountInput.value = String(n);
+  });
   toggleRun.addEventListener("click", () => {
     if (state.index >= state.steps.length - 1) state.index = 0;
     state.running = !state.running; render();
