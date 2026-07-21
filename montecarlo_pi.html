@@ -1,570 +1,983 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>蒙特卡洛估计 π</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --text: #111827;
-      --muted: #4b5563;
-      --line: #e5e7eb;
-      --soft: #f9fafb;
-      --accent: #3db3d8;
-      --accent-strong: #2b8fb6;
-      --button-bg: #ffffff;
-      --button-border: #d1d5db;
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      --inside: #0ea5e9;
-      --outside: #ef4444;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    }
-
-    body {
-      padding: 20px 24px 28px;
-    }
-
-    .page {
-      max-width: 980px;
-      margin: 0 auto;
-    }
-
-    .head {
-      margin-bottom: 12px;
-    }
-
-    .head h1 {
-      margin: 0;
-      font-size: clamp(30px, 3.3vw, 42px);
-      font-weight: 400;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-    }
-
-    .head p {
-      margin: 10px 0 0;
-      font-size: 15px;
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    .rule {
-      height: 1px;
-      background: var(--line);
-      margin: 18px 0 22px;
-    }
-
-    .info-card {
-      position: relative;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 2px;
-      box-shadow: var(--shadow);
-      padding: 18px 22px 16px 22px;
-      display: grid;
-      grid-template-columns: 0 1fr;
-      gap: 0 18px;
-      margin-bottom: 20px;
-    }
-
-    .info-card::before {
-      content: "";
-      position: absolute;
-      left: -1px;
-      top: -1px;
-      bottom: -1px;
-      width: 4px;
-      background: var(--accent);
-      border-radius: 2px 0 0 2px;
-    }
-
-    .info-card h2 {
-      margin: 0 0 8px;
-      font-size: 19px;
-      font-weight: 500;
-    }
-
-    .info-card p {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #1f2937;
-    }
-
-    .info-card .subtle {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 22px;
-      align-items: start;
-      margin-bottom: 18px;
-    }
-
-    .control {
-      min-width: 0;
-    }
-
-    .control h3 {
-      margin: 0 0 10px;
-      font-size: 20px;
-      font-weight: 400;
-      text-align: center;
-      line-height: 1.15;
-    }
-
-    .control .content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .button-stack {
-      display: grid;
-      gap: 8px;
-      width: 100%;
-      max-width: 160px;
-      margin: 0 auto;
-    }
-
-    button {
-      appearance: none;
-      border: 1px solid var(--button-border);
-      background: var(--button-bg);
-      color: #2563eb;
-      font: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-      box-shadow: var(--shadow);
-    }
-
-    button:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-      transform: translateY(-1px);
-    }
-
-    button.primary {
-      color: #1282c6;
-    }
-
-    button.secondary {
-      color: #1d4ed8;
-    }
-
-    .slider-wrap {
-      width: 100%;
-      max-width: 220px;
-      display: grid;
-      justify-items: center;
-      gap: 8px;
-    }
-
-    .slider-value {
-      font-size: 15px;
-      font-weight: 700;
-      color: #000;
-      font-variant-numeric: tabular-nums;
-      line-height: 1;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      accent-color: #f8b84e;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin: 4px 0 22px;
-    }
-
-    .stat {
-      text-align: center;
-      padding: 12px 10px 10px;
-    }
-
-    .stat .label {
-      font-size: 15px;
-      font-weight: 400;
-      color: #1f2937;
-      margin-bottom: 8px;
-    }
-
-    .stat .value {
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.1;
-      font-variant-numeric: tabular-nums;
-      color: #111827;
-    }
-
-    .plot-wrap {
-      display: flex;
-      justify-content: center;
-      margin-top: 6px;
-      margin-bottom: 8px;
-    }
-
-    .plot-shell {
-      width: min(100%, 660px);
-      aspect-ratio: 1 / 1;
-      background: #fff;
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    .footer-note {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-    }
-
-    @media (max-width: 980px) {
-      body { padding: 24px 18px 40px; }
-      .controls,
-      .stats {
-        grid-template-columns: 1fr;
-      }
-      .control h3 {
-        text-align: left;
-      }
-      .control .content {
-        align-items: stretch;
-      }
-      .button-stack,
-      .slider-wrap {
-        max-width: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="page">
-    <header class="head">
-      <h1>蒙特卡洛估计 π</h1>
-      <p>用随机采样估计 π。</p>
-    </header>
-
-    <div class="rule"></div>
-
-    <section class="info-card">
-      <div></div>
-      <div>
-        <h2>说明</h2>
-        <p>在单位正方形中随机撒点，统计落入内切圆的比例，用 <strong>4 × 圆内点数 / 总点数</strong> 估计 π。</p>
-        <p class="subtle">调整总点数和每秒增长速度，可以观察估计值如何逐渐稳定。</p>
-      </div>
-    </section>
-
-    <section class="controls">
-      <div class="control">
-        <h3>初始化 / 重置</h3>
-        <div class="content">
-          <div class="button-stack">
-            <button id="toggleRun" class="primary">开始</button>
-            <button id="reset" class="secondary">重置</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="control">
-        <h3>每秒点数</h3>
-        <div class="content">
-          <div class="slider-wrap">
-            <input id="rate" type="range" min="1" max="1000" step="1" value="240" />
-            <div class="slider-value" id="rateValue">240</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="control">
-        <h3>目标点数</h3>
-        <div class="content">
-          <div class="slider-wrap">
-            <input id="targetCount" type="range" min="0" max="100000" step="1" value="2000" />
-            <div class="slider-value" id="targetCountValue">2000</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="stats">
-      <div class="stat">
-        <div class="label">总点数</div>
-        <div class="value" id="totalPoints">0</div>
-      </div>
-      <div class="stat">
-        <div class="label">圆内点数</div>
-        <div class="value" id="insidePoints">0</div>
-      </div>
-      <div class="stat">
-        <div class="label">π 估计值</div>
-        <div class="value" id="piEstimate">0.0000</div>
-      </div>
-      <div class="stat">
-        <div class="label">误差</div>
-        <div class="value" id="errorValue">0.0000</div>
-      </div>
-    </section>
-
-    <section class="plot-wrap">
-      <div class="plot-shell">
-        <canvas id="plot"></canvas>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    (() => {
-      const canvas = document.getElementById('plot');
-      const ctx = canvas.getContext('2d');
-
-      const targetCountInput = document.getElementById('targetCount');
-      const targetCountValue = document.getElementById('targetCountValue');
-      const rateInput = document.getElementById('rate');
-      const rateValue = document.getElementById('rateValue');
-      const toggleRunButton = document.getElementById('toggleRun');
-      const resetButton = document.getElementById('reset');
-      const totalPointsEl = document.getElementById('totalPoints');
-      const insidePointsEl = document.getElementById('insidePoints');
-      const piEstimateEl = document.getElementById('piEstimate');
-      const errorValueEl = document.getElementById('errorValue');
-
-      const state = {
-        running: false,
-        total: 0,
-        inside: 0,
-        points: [],
-        timer: null,
-        width: 0,
-        height: 0,
-        pad: 30,
-      };
-
-      const fmtInt = new Intl.NumberFormat('zh-CN');
-      const fmtNum = new Intl.NumberFormat('zh-CN', {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      });
-
-      function getTargetCount() {
-        return Number(targetCountInput.value);
-      }
-
-      function getRate() {
-        return Math.max(1, Number(rateInput.value));
-      }
-
-      function syncLabels() {
-        targetCountValue.textContent = fmtInt.format(getTargetCount());
-        rateValue.textContent = fmtInt.format(getRate());
-      }
-
-      function updateStats() {
-        totalPointsEl.textContent = fmtInt.format(state.total);
-        insidePointsEl.textContent = fmtInt.format(state.inside);
-
-        const estimate = state.total === 0 ? 0 : 4 * state.inside / state.total;
-        const error = state.total === 0 ? 0 : Math.abs(estimate - Math.PI);
-
-        piEstimateEl.textContent = fmtNum.format(estimate);
-        errorValueEl.textContent = fmtNum.format(error);
-      }
-
-      function setRunning(running) {
-        state.running = running;
-        toggleRunButton.textContent = running ? '暂停' : '开始';
-      }
-
-      function resizeCanvas() {
-        const rect = canvas.getBoundingClientRect();
-        const size = Math.floor(Math.min(rect.width, rect.height));
-        const dpr = Math.max(1, window.devicePixelRatio || 1);
-
-        state.width = size;
-        state.height = size;
-        canvas.width = Math.max(1, Math.floor(size * dpr));
-        canvas.height = Math.max(1, Math.floor(size * dpr));
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        redrawAll();
-      }
-
-      function clearScene() {
-        const size = state.width;
-        ctx.clearRect(0, 0, size, size);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, size, size);
-      }
-
-      function drawBoundary() {
-        const { pad, width } = state;
-        const side = width - pad * 2;
-        const center = pad + side / 2;
-        const radius = side / 2;
-
-        ctx.save();
-        ctx.strokeStyle = '#111827';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(pad, pad, side, side);
-
-        ctx.beginPath();
-        ctx.arc(center, center, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = '#3db3d8';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        ctx.restore();
-      }
-
-      function drawPoint(point) {
-        const { pad, width } = state;
-        const side = width - pad * 2;
-        const x = pad + point.x * side;
-        const y = pad + (1 - point.y) * side;
-
-        ctx.save();
-        ctx.fillStyle = point.inside ? 'rgba(14, 165, 233, 0.85)' : 'rgba(239, 68, 68, 0.8)';
-        ctx.beginPath();
-        ctx.arc(x, y, 2.1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      function redrawAll() {
-        clearScene();
-        drawBoundary();
-        for (const point of state.points) {
-          drawPoint(point);
-        }
-      }
-
-      function generatePoint() {
-        const x = Math.random();
-        const y = Math.random();
-        const dx = x - 0.5;
-        const dy = y - 0.5;
-        const inside = dx * dx + dy * dy <= 0.25;
-        return { x, y, inside };
-      }
-
-      function stopTimer() {
-        if (state.timer !== null) {
-          clearTimeout(state.timer);
-          state.timer = null;
-        }
-      }
-
-      function scheduleNext() {
-        stopTimer();
-        if (!state.running) return;
-        const delay = Math.max(1, Math.round(1000 / getRate()));
-        state.timer = setTimeout(step, delay);
-      }
-
-      function finishIfNeeded() {
-        if (state.total >= getTargetCount()) {
-          setRunning(false);
-          stopTimer();
-        }
-      }
-
-      function step() {
-        state.timer = null;
-        if (!state.running) return;
-
-        const target = getTargetCount();
-        if (state.total >= target) {
-          finishIfNeeded();
-          return;
-        }
-
-        const point = generatePoint();
-        state.points.push(point);
-        state.total += 1;
-        if (point.inside) state.inside += 1;
-
-        drawPoint(point);
-        updateStats();
-        finishIfNeeded();
-
-        if (state.running) {
-          scheduleNext();
-        }
-      }
-
-      function startOrPause() {
-        if (state.running) {
-          setRunning(false);
-          stopTimer();
-          return;
-        }
-
-        if (state.total >= getTargetCount()) {
-          updateStats();
-          return;
-        }
-
-        setRunning(true);
-        scheduleNext();
-      }
-
-      function resetAll() {
-        setRunning(false);
-        stopTimer();
-        state.total = 0;
-        state.inside = 0;
-        state.points = [];
-        updateStats();
-        redrawAll();
-      }
-
-      targetCountInput.addEventListener('input', () => {
-        syncLabels();
-        updateStats();
-        finishIfNeeded();
-      });
-
-      rateInput.addEventListener('input', () => {
-        syncLabels();
-        if (state.running) scheduleNext();
-      });
-
-      toggleRunButton.addEventListener('click', startOrPause);
-      resetButton.addEventListener('click', resetAll);
-      window.addEventListener('resize', resizeCanvas);
-
-      syncLabels();
-      updateStats();
-      requestAnimationFrame(resizeCanvas);
-    })();
-  </script>
-</body>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>蒙特卡洛估计 π</title>
+		<style>
+			:root {
+				--bg: #ffffff;
+				--text: #111827;
+				--muted: #4b5563;
+				--line: #e5e7eb;
+				--soft: #f9fafb;
+				--accent: #3db3d8;
+				--accent-strong: #2b8fb6;
+				--button-bg: #ffffff;
+				--button-border: #d1d5db;
+				--shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+				--inside: #0ea5e9;
+				--outside: #ef4444;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				min-height: 100%;
+				background: var(--bg);
+				color: var(--text);
+				font-family:
+					'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+					sans-serif;
+			}
+
+			body {
+				padding: 20px 24px 28px;
+			}
+
+			.page {
+				max-width: 1100px;
+				margin: 0 auto;
+			}
+
+			.head {
+				margin-bottom: 12px;
+			}
+
+			.head h1 {
+				margin: 0;
+				font-size: clamp(30px, 3.3vw, 42px);
+				font-weight: 400;
+				letter-spacing: -0.02em;
+				line-height: 1.1;
+			}
+
+			.head p {
+				margin: 10px 0 0;
+				font-size: 15px;
+				color: var(--muted);
+				line-height: 1.45;
+			}
+
+			.rule {
+				height: 1px;
+				background: var(--line);
+				margin: 18px 0 22px;
+			}
+
+			.info-card {
+				position: relative;
+				background: #fff;
+				border: 1px solid var(--line);
+				border-radius: 2px;
+				box-shadow: var(--shadow);
+				padding: 18px 22px 16px 22px;
+				display: grid;
+				grid-template-columns: 0 1fr;
+				gap: 0 18px;
+				margin-bottom: 20px;
+			}
+
+			.info-card::before {
+				content: '';
+				position: absolute;
+				left: -1px;
+				top: -1px;
+				bottom: -1px;
+				width: 4px;
+				background: var(--accent);
+				border-radius: 2px 0 0 2px;
+			}
+
+			.info-card h2 {
+				margin: 0 0 8px;
+				font-size: 19px;
+				font-weight: 500;
+			}
+
+			.info-card p {
+				margin: 0;
+				font-size: 13px;
+				line-height: 1.6;
+				color: #1f2937;
+			}
+
+			.info-card .subtle {
+				margin-top: 8px;
+				color: var(--muted);
+				font-size: 13px;
+			}
+
+			.controls {
+				display: grid;
+				grid-template-columns: 1fr 1fr 1fr;
+				gap: 22px;
+				align-items: start;
+				margin-bottom: 18px;
+			}
+
+			.control {
+				min-width: 0;
+			}
+
+			.control h3 {
+				margin: 0 0 10px;
+				font-size: 20px;
+				font-weight: 400;
+				text-align: center;
+				line-height: 1.15;
+			}
+
+			.control .content {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.button-stack {
+				display: grid;
+				gap: 8px;
+				width: 100%;
+				max-width: 160px;
+				margin: 0 auto;
+			}
+
+			button {
+				appearance: none;
+				border: 1px solid var(--button-border);
+				background: var(--button-bg);
+				color: #2563eb;
+				font: inherit;
+				font-size: 15px;
+				font-weight: 600;
+				padding: 8px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				transition:
+					background 0.15s ease,
+					border-color 0.15s ease,
+					transform 0.15s ease;
+				box-shadow: var(--shadow);
+			}
+
+			button:hover {
+				background: #f8fafc;
+				border-color: #cbd5e1;
+				transform: translateY(-1px);
+			}
+
+			button.primary {
+				color: #1282c6;
+			}
+
+			button.secondary {
+				color: #1d4ed8;
+			}
+
+			.slider-wrap {
+				width: 100%;
+				max-width: 220px;
+				display: grid;
+				justify-items: center;
+				gap: 8px;
+			}
+
+			.slider-value {
+				font-size: 15px;
+				font-weight: 700;
+				color: #000;
+				font-variant-numeric: tabular-nums;
+				line-height: 1;
+			}
+
+			input[type='range'] {
+				width: 100%;
+				accent-color: #f8b84e;
+			}
+
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(4, minmax(0, 1fr));
+				gap: 10px;
+				margin: 4px 0 22px;
+			}
+
+			.stat {
+				text-align: center;
+				padding: 12px 10px 10px;
+			}
+
+			.stat .label {
+				font-size: 15px;
+				font-weight: 400;
+				color: #1f2937;
+				margin-bottom: 8px;
+			}
+
+			.stat .value {
+				font-size: 18px;
+				font-weight: 700;
+				line-height: 1.1;
+				font-variant-numeric: tabular-nums;
+				color: #111827;
+			}
+
+			.plot-wrap {
+				display: flex;
+				justify-content: center;
+				margin-top: 6px;
+				margin-bottom: 8px;
+			}
+
+			.main {
+				display: grid;
+				grid-template-columns: minmax(0, 600px) minmax(360px, 1fr);
+				gap: 16px;
+				align-items: start;
+				margin-top: 6px;
+			}
+
+			.plot-shell {
+				position: relative;
+				background: #fff;
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow);
+			}
+
+			canvas {
+				display: block;
+				width: 100%;
+				aspect-ratio: 1 / 1;
+			}
+
+			.side-panel {
+				border: 1px solid var(--line);
+				background: #fff;
+				box-shadow: var(--shadow);
+				padding: 14px;
+			}
+
+			.side-panel h3 {
+				margin: 0 0 10px;
+				font-size: 17px;
+				font-weight: 500;
+			}
+
+			.step-text {
+				font-size: 13px;
+				line-height: 1.65;
+				color: #1f2937;
+				min-height: 52px;
+				padding-bottom: 10px;
+				border-bottom: 1px solid var(--line);
+				margin-bottom: 12px;
+			}
+
+			.result-box {
+				font-size: 13px;
+				line-height: 1.65;
+				color: #1f2937;
+				padding-bottom: 10px;
+				margin-bottom: 12px;
+			}
+
+			.chart-box {
+				margin-bottom: 12px;
+			}
+
+			.chart-box h3 {
+				margin: 0 0 8px;
+			}
+
+			.chart-box svg {
+				display: block;
+				width: 100%;
+				height: auto;
+				border: 1px solid var(--line);
+				background: #fafafa;
+			}
+
+			.code-title {
+				margin: 0 0 8px;
+				font-size: 16px;
+				font-weight: 500;
+			}
+
+			.code-block {
+				margin-bottom: 12px;
+				border: 1px solid var(--line);
+				background: #f8fafc;
+				padding: 8px 0;
+				overflow: hidden;
+			}
+
+			.pseudo {
+				display: grid;
+				gap: 6px;
+				font-size: 12px;
+				color: #374151;
+				font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+			}
+
+			.pseudo-line {
+				display: grid;
+				grid-template-columns: 34px minmax(0, 1fr);
+				gap: 10px;
+				align-items: start;
+				padding: 6px 12px;
+				background: #f9fafb;
+				border-left: 3px solid transparent;
+			}
+
+			.pseudo-line.active {
+				background: #fff7ed;
+				border-left-color: #fdba74;
+			}
+
+			.line-number {
+				color: #94a3b8;
+				text-align: right;
+				user-select: none;
+			}
+
+			.line-code {
+				white-space: pre-wrap;
+				overflow-wrap: break-word;
+			}
+
+			@media (max-width: 980px) {
+				body {
+					padding: 24px 18px 40px;
+				}
+				.controls,
+				.stats,
+				.main {
+					grid-template-columns: 1fr;
+				}
+				.control h3 {
+					text-align: left;
+				}
+				.control .content {
+					align-items: stretch;
+				}
+				.button-stack,
+				.slider-wrap {
+					max-width: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="page">
+			<header class="head">
+				<h1>蒙特卡洛估计 π</h1>
+				<p>用随机采样估计 π。</p>
+			</header>
+
+			<div class="rule"></div>
+
+			<section class="info-card">
+				<div></div>
+				<div>
+					<h2>说明</h2>
+					<p>
+						<strong>蒙特卡洛方法</strong
+						>是一种通过随机采样求解数值问题的计算方法。估计 π
+						的基本思路是：在边长为 1 的单位正方形中画一个内切圆（半径为
+						0.5），随机向正方形内撒点。点落在圆内的概率等于圆的面积除以正方形的面积，即
+						π·r² / 1² = π·0.25 / 1 = π / 4。
+					</p>
+					<p>
+						因此
+						<strong>π ≈ 4 × 圆内点数 / 总点数</strong
+						>。随着采样点数的增加，估计值会逐渐收敛到真实值。蓝色点表示落在圆内，红色点表示落在圆外。
+					</p>
+					<p class="subtle">
+						调整目标点数和每秒增长速度，可以观察估计值收敛的快慢和精度变化。点数越多，结果越接近
+						π。
+					</p>
+				</div>
+			</section>
+
+			<section class="controls">
+				<div class="control">
+					<h3>初始化 / 重置</h3>
+					<div class="content">
+						<div class="button-stack">
+							<button id="toggleRun" class="primary">开始</button>
+							<button id="reset" class="secondary">重置</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="control">
+					<h3>每秒点数</h3>
+					<div class="content">
+						<div class="slider-wrap">
+							<input
+								id="rate"
+								type="range"
+								min="1"
+								max="1000"
+								step="1"
+								value="240"
+							/>
+							<div class="slider-value" id="rateValue">240</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="control">
+					<h3>目标点数</h3>
+					<div class="content">
+						<div class="slider-wrap">
+							<input
+								id="targetCount"
+								type="range"
+								min="0"
+								max="100000"
+								step="1"
+								value="2000"
+							/>
+							<div class="slider-value" id="targetCountValue">2000</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="stats">
+				<div class="stat">
+					<div class="label">总点数</div>
+					<div class="value" id="totalPoints">0</div>
+				</div>
+				<div class="stat">
+					<div class="label">圆内点数</div>
+					<div class="value" id="insidePoints">0</div>
+				</div>
+				<div class="stat">
+					<div class="label">π 估计值</div>
+					<div class="value" id="piEstimate">0.0000</div>
+				</div>
+				<div class="stat">
+					<div class="label">误差</div>
+					<div class="value" id="errorValue">0.0000</div>
+				</div>
+			</section>
+
+			<section class="main">
+				<div class="plot-shell">
+					<canvas id="plot"></canvas>
+				</div>
+
+				<aside class="side-panel">
+					<h3>过程说明</h3>
+					<div id="stepText" class="step-text">
+						准备就绪，点击"开始"启动随机采样。
+					</div>
+
+					<h3 class="code-title">Python 代码</h3>
+					<div class="code-block">
+						<div id="pseudoList" class="pseudo"></div>
+					</div>
+
+					<div class="result-box">
+						<h3>当前估计</h3>
+						<div id="currentPi">等待开始。</div>
+					</div>
+
+					<div class="chart-box">
+						<h3>收敛曲线</h3>
+						<svg
+							id="convergeChart"
+							viewBox="0 0 400 180"
+							aria-label="convergence chart"
+						></svg>
+					</div>
+				</aside>
+			</section>
+		</main>
+
+		<script>
+			(() => {
+				const canvas = document.getElementById('plot');
+				const ctx = canvas.getContext('2d');
+
+				const targetCountInput = document.getElementById('targetCount');
+				const targetCountValue = document.getElementById('targetCountValue');
+				const rateInput = document.getElementById('rate');
+				const rateValue = document.getElementById('rateValue');
+				const toggleRunButton = document.getElementById('toggleRun');
+				const resetButton = document.getElementById('reset');
+				const totalPointsEl = document.getElementById('totalPoints');
+				const insidePointsEl = document.getElementById('insidePoints');
+				const piEstimateEl = document.getElementById('piEstimate');
+				const errorValueEl = document.getElementById('errorValue');
+
+				const state = {
+					running: false,
+					total: 0,
+					inside: 0,
+					points: [],
+					timer: null,
+					width: 0,
+					height: 0,
+					pad: 30,
+					activeLine: 0,
+					stepMessage: '准备就绪，点击「开始」启动随机采样。',
+					currentEstimate: 0,
+					history: [], // [{total, estimate}]
+				};
+
+				const pseudoLines = [
+					'def estimate_pi(total):',
+					'    inside = 0',
+					'    for _ in range(total):',
+					'        x, y = random(), random()',
+					'        if x*x + y*y <= 1:',
+					'            inside += 1',
+					'    return 4 * inside / total',
+				];
+
+				const pseudoList = document.getElementById('pseudoList');
+				const stepText = document.getElementById('stepText');
+				const currentPi = document.getElementById('currentPi');
+
+				const fmtInt = new Intl.NumberFormat('zh-CN');
+				const fmtNum = new Intl.NumberFormat('zh-CN', {
+					minimumFractionDigits: 4,
+					maximumFractionDigits: 4,
+				});
+
+				function getTargetCount() {
+					return Number(targetCountInput.value);
+				}
+
+				function getRate() {
+					return Math.max(1, Number(rateInput.value));
+				}
+
+				function syncLabels() {
+					targetCountValue.textContent = fmtInt.format(getTargetCount());
+					rateValue.textContent = fmtInt.format(getRate());
+				}
+
+				function updateStats() {
+					totalPointsEl.textContent = fmtInt.format(state.total);
+					insidePointsEl.textContent = fmtInt.format(state.inside);
+
+					const estimate =
+						state.total === 0 ? 0 : (4 * state.inside) / state.total;
+					const error = state.total === 0 ? 0 : Math.abs(estimate - Math.PI);
+
+					piEstimateEl.textContent = fmtNum.format(estimate);
+					errorValueEl.textContent = fmtNum.format(error);
+
+					state.currentEstimate = estimate;
+					currentPi.textContent =
+						state.total === 0
+							? '暂无数据。'
+							: `π ≈ ${fmtNum.format(estimate)}，误差 ${fmtNum.format(error)}`;
+					stepText.textContent = state.stepMessage;
+					renderPseudo(state.activeLine);
+					renderChart();
+				}
+
+				function renderChart() {
+					const svg = document.getElementById('convergeChart');
+					svg.innerHTML = '';
+					if (state.history.length < 2) {
+						const t = document.createElementNS(
+							'http://www.w3.org/2000/svg',
+							'text',
+						);
+						t.setAttribute('x', '200');
+						t.setAttribute('y', '90');
+						t.setAttribute('text-anchor', 'middle');
+						t.setAttribute('fill', '#9ca3af');
+						t.setAttribute('font-size', '14');
+						t.textContent = '等待更多数据……';
+						svg.appendChild(t);
+						return;
+					}
+
+					const W = 400,
+						H = 180,
+						M = { top: 10, bottom: 25, left: 50, right: 15 };
+					const plotW = W - M.left - M.right,
+						plotH = H - M.top - M.bottom;
+					const data = state.history;
+
+					// Compute error = |estimate - π|, on log scale
+					const logMin = -4,
+						logMax = 0; // 10^-4 = 0.0001  ~  10^0 = 1
+					const logRange = logMax - logMin;
+
+					function toLog(v) {
+						return v <= 0 ? logMin : Math.max(logMin, Math.log10(v));
+					}
+
+					// Grid lines at powers of 10
+					const gridLabels = [1, 0.1, 0.01, 0.001, 0.0001];
+					gridLabels.forEach((v) => {
+						const ly = M.top + plotH * (1 - (toLog(v) - logMin) / logRange);
+						const line = document.createElementNS(
+							'http://www.w3.org/2000/svg',
+							'line',
+						);
+						line.setAttribute('x1', M.left);
+						line.setAttribute('x2', W - M.right);
+						line.setAttribute('y1', ly);
+						line.setAttribute('y2', ly);
+						line.setAttribute('stroke', '#e5e7eb');
+						line.setAttribute('stroke-width', '1');
+						svg.appendChild(line);
+						const lb = document.createElementNS(
+							'http://www.w3.org/2000/svg',
+							'text',
+						);
+						lb.setAttribute('x', M.left - 4);
+						lb.setAttribute('y', ly + 4);
+						lb.setAttribute('text-anchor', 'end');
+						lb.setAttribute('fill', '#9ca3af');
+						lb.setAttribute('font-size', '10');
+						let txt;
+						if (v >= 1) txt = '1';
+						else if (v >= 0.1) txt = '0.1';
+						else if (v >= 0.01) txt = '0.01';
+						else if (v >= 0.001) txt = '0.001';
+						else txt = '0.0001';
+						lb.textContent = txt;
+						svg.appendChild(lb);
+					});
+
+					// Y-axis label
+					const ylb = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'text',
+					);
+					ylb.setAttribute('x', '4');
+					ylb.setAttribute('y', '12');
+					ylb.setAttribute('fill', '#9ca3af');
+					ylb.setAttribute('font-size', '10');
+					ylb.textContent = '误差';
+					svg.appendChild(ylb);
+
+					// Error line
+					const maxTotal = Math.max(state.total * 1.1, 100);
+					let points = '';
+					data.forEach((d, idx) => {
+						const err = Math.abs(d.estimate - Math.PI);
+						const x = M.left + plotW * (d.total / maxTotal);
+						const y = M.top + plotH * (1 - (toLog(err) - logMin) / logRange);
+						points += `${idx === 0 ? 'M' : 'L'}${x},${y} `;
+					});
+					const path = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'path',
+					);
+					path.setAttribute('d', points.trim());
+					path.setAttribute('fill', 'none');
+					path.setAttribute('stroke', '#f59e0b');
+					path.setAttribute('stroke-width', '2');
+					path.setAttribute('stroke-linejoin', 'round');
+					svg.appendChild(path);
+
+					// Theoretical 1-sigma expected error line
+					let theory = '';
+					for (
+						let t = 1;
+						t <= state.total;
+						t += Math.max(1, Math.floor(state.total / 50))
+					) {
+						const se = Math.sqrt((Math.PI * (4 - Math.PI)) / t);
+						const x = M.left + plotW * (t / maxTotal);
+						const y = M.top + plotH * (1 - (toLog(se) - logMin) / logRange);
+						theory += `${theory === '' ? 'M' : 'L'}${x},${y} `;
+					}
+					const tPath = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'path',
+					);
+					tPath.setAttribute('d', theory.trim());
+					tPath.setAttribute('fill', 'none');
+					tPath.setAttribute('stroke', '#9ca3af');
+					tPath.setAttribute('stroke-width', '1');
+					tPath.setAttribute('stroke-dasharray', '4,3');
+					svg.appendChild(tPath);
+					const tLb = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'text',
+					);
+					tLb.setAttribute('x', M.left + 4);
+					tLb.setAttribute('y', M.top + 12);
+					tLb.setAttribute('fill', '#9ca3af');
+					tLb.setAttribute('font-size', '10');
+					svg.appendChild(tLb);
+
+					// Last point dot + label
+					const last = data[data.length - 1];
+					const lastErr = Math.abs(last.estimate - Math.PI);
+					const lx = M.left + plotW * (last.total / maxTotal);
+					const ly = M.top + plotH * (1 - (toLog(lastErr) - logMin) / logRange);
+					const dot = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'circle',
+					);
+					dot.setAttribute('cx', lx);
+					dot.setAttribute('cy', ly);
+					dot.setAttribute('r', '4');
+					dot.setAttribute('fill', '#c2410c');
+					svg.appendChild(dot);
+					const val = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'text',
+					);
+					val.setAttribute('x', lx + 6);
+					val.setAttribute('y', ly - 4);
+					val.setAttribute('fill', '#c2410c');
+					val.setAttribute('font-size', '10');
+					val.textContent = fmtNum.format(lastErr);
+					svg.appendChild(val);
+
+					// X axis label
+					const xlb = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'text',
+					);
+					xlb.setAttribute('x', W / 2);
+					xlb.setAttribute('y', H - 3);
+					xlb.setAttribute('text-anchor', 'middle');
+					xlb.setAttribute('fill', '#9ca3af');
+					xlb.setAttribute('font-size', '10');
+					xlb.textContent = `点数 (${fmtInt.format(state.total)})`;
+					svg.appendChild(xlb);
+				}
+
+				function renderPseudo(activeLine) {
+					pseudoList.innerHTML = '';
+					pseudoLines.forEach((line, index) => {
+						const el = document.createElement('div');
+						el.className = 'pseudo-line';
+						if (index === activeLine) el.classList.add('active');
+						const num = document.createElement('div');
+						num.className = 'line-number';
+						num.textContent = String(index + 1);
+						const cd = document.createElement('div');
+						cd.className = 'line-code';
+						cd.textContent = line;
+						el.append(num, cd);
+						pseudoList.appendChild(el);
+					});
+				}
+
+				function setRunning(running) {
+					state.running = running;
+					toggleRunButton.textContent = running ? '暂停' : '开始';
+				}
+
+				function resizeCanvas() {
+					const rect = canvas.getBoundingClientRect();
+					const size = Math.floor(Math.min(rect.width, rect.height));
+					const dpr = Math.max(1, window.devicePixelRatio || 1);
+					if (size < 100) {
+						requestAnimationFrame(resizeCanvas);
+						return;
+					}
+
+					state.width = size;
+					state.height = size;
+					canvas.width = Math.max(1, Math.floor(size * dpr));
+					canvas.height = Math.max(1, Math.floor(size * dpr));
+					ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+					redrawAll();
+				}
+
+				function clearScene() {
+					const size = state.width;
+					ctx.clearRect(0, 0, size, size);
+					ctx.fillStyle = '#ffffff';
+					ctx.fillRect(0, 0, size, size);
+				}
+
+				function drawBoundary() {
+					const { pad, width } = state;
+					const side = width - pad * 2;
+					const center = pad + side / 2;
+					const radius = side / 2;
+
+					ctx.save();
+
+					ctx.beginPath();
+					ctx.arc(center, center, radius, 0, Math.PI * 2);
+					ctx.strokeStyle = '#3db3d8';
+					ctx.lineWidth = 2.5;
+					ctx.stroke();
+
+					ctx.strokeStyle = '#111827';
+					ctx.lineWidth = 2;
+					ctx.strokeRect(pad, pad, side, side);
+
+					ctx.restore();
+				}
+
+				function drawPoint(point) {
+					const { pad, width } = state;
+					const side = width - pad * 2;
+					const x = pad + point.x * side;
+					const y = pad + (1 - point.y) * side;
+
+					ctx.save();
+					ctx.fillStyle = point.inside
+						? 'rgba(14, 165, 233, 0.85)'
+						: 'rgba(239, 68, 68, 0.8)';
+					ctx.beginPath();
+					ctx.arc(x, y, 2.1, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.restore();
+				}
+
+				function redrawAll() {
+					clearScene();
+					drawBoundary();
+					for (const point of state.points) {
+						drawPoint(point);
+					}
+				}
+
+				function generatePoint() {
+					const x = Math.random();
+					const y = Math.random();
+					const dx = x - 0.5;
+					const dy = y - 0.5;
+					const inside = dx * dx + dy * dy <= 0.25;
+					return { x, y, inside };
+				}
+
+				function stopTimer() {
+					if (state.timer !== null) {
+						clearTimeout(state.timer);
+						state.timer = null;
+					}
+				}
+
+				function scheduleNext() {
+					stopTimer();
+					if (!state.running) return;
+					const delay = Math.max(1, Math.round(1000 / getRate()));
+					state.timer = setTimeout(step, delay);
+				}
+
+				function finishIfNeeded() {
+					if (state.total >= getTargetCount()) {
+						setRunning(false);
+						stopTimer();
+					}
+				}
+
+				function step() {
+					state.timer = null;
+					if (!state.running) return;
+
+					const target = getTargetCount();
+					if (state.total >= target) {
+						finishIfNeeded();
+						return;
+					}
+
+					const point = generatePoint();
+					state.activeLine = 3;
+					state.stepMessage = `生成随机点 (${point.x.toFixed(4)}, ${point.y.toFixed(4)})`;
+					state.points.push(point);
+					state.total += 1;
+					if (point.inside) {
+						state.inside += 1;
+						state.activeLine = 4;
+						state.stepMessage += `，点在圆内（x²+y² ≤ 1），计数 +1`;
+					} else {
+						state.activeLine = 5;
+						state.stepMessage += `，点在圆外，跳过`;
+					}
+
+					// Record estimate history (sample every 1% or every 10 points, whichever is smaller)
+					const sampleInterval = Math.max(
+						1,
+						Math.min(10, Math.floor(getTargetCount() / 100)),
+					);
+					if (state.total % sampleInterval === 0) {
+						state.history.push({
+							total: state.total,
+							estimate: (4 * state.inside) / state.total,
+						});
+					}
+
+					drawPoint(point);
+					updateStats();
+					finishIfNeeded();
+
+					if (state.running) {
+						scheduleNext();
+					}
+				}
+
+				function startOrPause() {
+					if (state.running) {
+						setRunning(false);
+						stopTimer();
+						state.stepMessage = '已暂停。';
+						updateStats();
+						return;
+					}
+
+					if (state.total >= getTargetCount()) {
+						updateStats();
+						return;
+					}
+
+					state.stepMessage = '开始随机采样……';
+					if (state.history.length === 0) {
+						state.history = [{ total: 0, estimate: 0 }];
+					}
+					setRunning(true);
+					scheduleNext();
+				}
+
+				function resetAll() {
+					setRunning(false);
+					stopTimer();
+					state.total = 0;
+					state.inside = 0;
+					state.points = [];
+					state.history = [];
+					state.activeLine = 0;
+					state.stepMessage = '已重置，点击「开始」重新采样。';
+					updateStats();
+					redrawAll();
+				}
+
+				targetCountInput.addEventListener('input', () => {
+					syncLabels();
+					updateStats();
+					finishIfNeeded();
+				});
+
+				rateInput.addEventListener('input', () => {
+					syncLabels();
+					if (state.running) scheduleNext();
+				});
+
+				toggleRunButton.addEventListener('click', startOrPause);
+				resetButton.addEventListener('click', resetAll);
+				window.addEventListener('resize', resizeCanvas);
+
+				syncLabels();
+				updateStats();
+				requestAnimationFrame(resizeCanvas);
+			})();
+		</script>
+	</body>
 </html>
