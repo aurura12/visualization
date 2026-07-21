@@ -200,10 +200,11 @@
     const edgeSet = new Set();
     const edges = [];
     function addEdge(a, b) {
-      const k = [a, b].sort().join("-");
+      const idA = labels[a], idB = labels[b];
+      const k = [idA, idB].sort().join("-");
       if (edgeSet.has(k)) return;
       edgeSet.add(k);
-      edges.push({ from: labels[a], to: labels[b], weight: 1 + Math.floor(Math.random() * 9), id: k });
+      edges.push({ from: idA, to: idB, weight: 1 + Math.floor(Math.random() * 9), id: k });
     }
     for (let i = 1; i < n; i++) addEdge(Math.floor(Math.random() * i), i);
     const total = (n * (n - 1)) / 2;
@@ -224,12 +225,13 @@
     "def prim(graph, start):",
     "    in_tree = {start}",
     "    edges = []",
+    "    # 候选边按权值排序",
     "    candidates = [(w, start, v) for v, w in graph[start]]",
     "    heapify(candidates)",
     "    while len(in_tree) < len(graph):",
-    "        w, u, v = heappop(candidates)",
+    "        w, u, v = heappop(candidates)  # 取最小边",
     "        if v in in_tree: continue",
-    "        edges.append((u, v, w))",
+    "        edges.append((u, v, w))        # 将边加入 MST",
     "        in_tree.add(v)",
     "        for nb, wt in graph[v]:",
     "            if nb not in in_tree:",
@@ -239,20 +241,20 @@
 
   const kruskalCode = [
     "def kruskal(edges, n):",
-    "    parent = list(range(n))",
+    "    parent = list(range(n))          # 并查集初始化",
     "    mst = []",
-    "    def find(x):",
+    "    def find(x):                     # 查找根节点",
     "        while parent[x] != x:",
     "            parent[x] = parent[parent[x]]",
     "            x = parent[x]",
     "        return x",
-    "    def union(a, b):",
+    "    def union(a, b):                 # 合并（返回是否成环）",
     "        ra, rb = find(a), find(b)",
     "        if ra == rb: return False",
     "        parent[ra] = rb",
     "        return True",
     "    for u, v, w in sorted(edges, key=lambda e: e[2]):",
-    "        if union(u, v):",
+    "        if union(u, v):              # 不成环则加入 MST",
     "            mst.append((u, v, w))",
     "    return mst"
   ];
