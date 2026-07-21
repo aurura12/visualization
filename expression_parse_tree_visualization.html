@@ -14,7 +14,7 @@
       --button-bg: #ffffff;
       --button-border: #d1d5db;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      --node: #ffffff;
+      --edge: #9ca3af;
       --node-active: #fed7aa;
       --node-filled: #e0f2fe;
       --node-eval: #dcfce7;
@@ -40,7 +40,7 @@
     }
 
     .page {
-      max-width: 1080px;
+      max-width: 1140px;
       margin: 0 auto;
     }
 
@@ -103,7 +103,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1.2fr 1fr 1fr 1.2fr;
+      grid-template-columns: 1.4fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
       align-items: start;
@@ -125,7 +125,7 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
       max-width: 210px;
@@ -171,13 +171,44 @@
     }
 
     .slider-wrap,
-    .select-wrap,
-    .input-wrap {
+    .select-wrap {
       width: 100%;
       max-width: 240px;
       display: grid;
       justify-items: center;
       gap: 8px;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 38px;
+    }
+
+    .input-wrap input {
+      width: 300px;
+      height: 38px;
+      box-sizing: border-box;
+    }
+
+    .input-wrap button {
+      position: absolute;
+      height: 38px;
+      box-sizing: border-box;
+      white-space: nowrap;
+    }
+
+    .input-wrap button.apply {
+      left: calc(50% + 150px + 4px);
+      width: 54px;
+    }
+
+    .input-wrap button.random {
+      left: calc(50% + 150px + 4px + 58px);
+      width: 54px;
     }
 
     input[type="range"] {
@@ -250,7 +281,7 @@
 
     .main {
       display: grid;
-      grid-template-columns: minmax(0, 720px) minmax(260px, 1fr);
+      grid-template-columns: minmax(0, 660px) minmax(360px, 1fr);
       gap: 16px;
       align-items: stretch;
     }
@@ -269,7 +300,7 @@
     svg {
       display: block;
       width: 100%;
-      height: auto;
+      aspect-ratio: 720 / 420;
     }
 
     .side-panel {
@@ -338,23 +369,36 @@
       border-radius: 6px;
     }
 
+    .info-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .info-panel h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 500;
+    }
+
     .legend-item {
       display: inline-flex;
       align-items: center;
       gap: 6px;
     }
 
-    .legend-swatch {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
       border: 1px solid #94a3b8;
       background: #ffffff;
     }
 
-    .legend-swatch.valued { background: #e0f2fe; border-color: #0284c7; }
-    .legend-swatch.current { background: #fed7aa; border-color: #c2410c; }
-    .legend-swatch.done { background: #dcfce7; border-color: #16a34a; }
+    .swatch.valued { background: #e0f2fe; border-color: #0284c7; }
+    .swatch.current { background: #fed7aa; border-color: #c2410c; }
+    .swatch.done { background: #dcfce7; border-color: #16a34a; }
 
     .code-title {
       margin: 0 0 8px;
@@ -430,8 +474,9 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>按照课件中的思路，用栈辅助构建表达式解析树：遇到 <code>(</code> 创建左孩子并向下，遇到运算符写入当前节点并创建右孩子，遇到数字写入数值并弹栈回到父节点，遇到 <code>)</code> 弹栈返回。建树完成后可进行前序、中序、后序遍历与求值。</p>
-      <p>树节点颜色含义：蓝色表示已赋值，橙色表示当前正在处理的节点，绿色表示建树完成后的节点。</p>
+      <p>表达式解析树将算术表达式以二叉树形式组织：<strong>内部节点</strong>存放运算符，<strong>叶子节点</strong>存放数字。建树完成后，可以通过前序（前缀）、中序（中缀）、后序（后缀）遍历分别得到表达式的不同表示形式。</p>
+      <p><strong>建树过程（栈辅助）：</strong>遇到 <code>(</code> 创建左孩子并下移（入栈保存当前节点）；遇到运算符写入当前节点、创建右孩子并下移；遇到数字直接写入当前节点值并弹栈回到父节点；遇到 <code>)</code> 弹栈返回。栈的作用是追踪"从哪里来"，保证每次操作都在正确的父节点下。</p>
+      <p>图中<strong>蓝色</strong>节点表示已赋值的节点，<strong>橙色</strong>高亮当前正在操作的节点，<strong>绿色</strong>表示建树全部完成后的最终状态。右侧面板同步显示父节点栈的变化、token 进度和 Python 代码行高亮。</p>
     </section>
 
     <section class="controls">
@@ -439,30 +484,9 @@
         <h3>表达式</h3>
         <div class="content">
           <div class="input-wrap">
-            <input id="expressionInput" type="text" value="( ( 7 + 3 ) * ( 5 - 2 ) )" />
-          </div>
-        </div>
-      </div>
-
-      <div class="control">
-        <h3>示例</h3>
-        <div class="content">
-          <div class="select-wrap">
-            <select id="exampleSelect">
-              <option value="( ( 7 + 3 ) * ( 5 - 2 ) )">示例 1：(7+3)*(5-2)</option>
-              <option value="( ( 8 / 4 ) + ( 6 * 3 ) )">示例 2：(8/4)+(6*3)</option>
-              <option value="( ( ( 2 + 5 ) * 3 ) - ( 9 / 3 ) )">示例 3：((2+5)*3)-(9/3)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="control">
-        <h3>每秒步数</h3>
-        <div class="content">
-          <div class="slider-wrap">
-            <input id="speedInput" type="range" min="1" max="5" step="1" value="1" />
-            <div id="speedValue" class="slider-value">1 步/秒</div>
+            <input id="expressionInput" type="text" value="( ( 7 + 3 ) * ( 5 - 2 ) )" placeholder="如 ( 7 + 3 ) * ( 5 - 2 )" />
+            <button id="applyButton" class="apply" type="button">应用</button>
+            <button id="randomButton" class="random" type="button">随机</button>
           </div>
         </div>
       </div>
@@ -471,7 +495,6 @@
         <h3>操作</h3>
         <div class="content">
           <div class="button-stack">
-            <button id="applyButton" type="button">应用表达式</button>
             <button id="toggleRunButton" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
             <button id="resetButton" type="button">重置</button>
@@ -502,29 +525,33 @@
     <section id="tokenStrip" class="token-strip"></section>
 
     <section class="main">
-      <div class="plot-shell">
-        <svg id="treeSvg" viewBox="0 0 720 420" aria-label="parse tree"></svg>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-swatch valued"></span>已赋值</span>
-          <span class="legend-item"><span class="legend-swatch current"></span>当前节点</span>
-          <span class="legend-item"><span class="legend-swatch done"></span>建树完成</span>
+      <div>
+        <div class="plot-shell">
+          <svg id="treeSvg" viewBox="0 0 720 420" aria-label="parse tree"></svg>
+          <div class="legend">
+            <span class="legend-item"><span class="swatch valued"></span>已赋值</span>
+            <span class="legend-item"><span class="swatch current"></span>当前节点</span>
+            <span class="legend-item"><span class="swatch done"></span>建树完成</span>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <h3>过程说明</h3>
+          <div id="stepText" class="step-text"></div>
+
+          <div class="stack-box">
+            <h3>父节点栈</h3>
+            <div id="stackList" class="stack-list"></div>
+          </div>
+
+          <div class="result-box">
+            <h3>遍历 / 求值</h3>
+            <div id="resultText">尚未完成建树。</div>
+          </div>
         </div>
       </div>
 
       <aside class="side-panel">
-        <h3>过程说明</h3>
-        <div id="stepText" class="step-text"></div>
-
-        <div class="stack-box">
-          <h3>父节点栈</h3>
-          <div id="stackList" class="stack-list"></div>
-        </div>
-
-        <div class="result-box">
-          <h3>遍历 / 求值</h3>
-          <div id="resultText">尚未完成建树。</div>
-        </div>
-
         <h3 class="code-title">Python 代码</h3>
         <div id="pseudoList" class="pseudo"></div>
       </aside>
@@ -534,32 +561,30 @@
   <script>
     (() => {
       const pseudoLines = [
-        "def build_parse_tree(tokens):",
-        "    root = ParseTreeNode()",
-        "    stack = [root]",
-        "    for token in tokens:",
-        "        if token == '(':",
+        "def build_parse_tree(tokens):        # 建树",
+        "    root = ParseTreeNode()           # 根节点",
+        "    stack = [root]                    # 栈追踪路径",
+        "    for token in tokens:              # 遍历 token",
+        "        if token == '(':              # 左括号",
         "            current.left = ParseTreeNode()",
-        "            stack.append(current)",
-        "            current = current.left",
-        "        elif token in '+-*/':",
-        "            current.value = token",
+        "            stack.append(current)     # 入栈",
+        "            current = current.left    # 下移",
+        "        elif token in '+-*/':         # 运算符",
+        "            current.value = token      # 赋值",
         "            current.right = ParseTreeNode()",
-        "            stack.append(current)",
-        "            current = current.right",
-        "        elif token == ')':",
-        "            current = stack.pop()",
-        "        else:",
-        "            current.value = int(token)",
-        "            current = stack.pop()",
-        "    return root"
+        "            stack.append(current)     # 入栈",
+        "            current = current.right   # 右孩子",
+        "        elif token == ')':            # 右括号",
+        "            current = stack.pop()     # 弹栈",
+        "        else:                          # 数字",
+        "            current.value = int(token) # 写入值",
+        "            current = stack.pop()     # 弹栈",
+        "    return root                       # 返回根"
       ];
 
       const expressionInput = document.getElementById("expressionInput");
-      const exampleSelect = document.getElementById("exampleSelect");
-      const speedInput = document.getElementById("speedInput");
-      const speedValue = document.getElementById("speedValue");
       const applyButton = document.getElementById("applyButton");
+      const randomButton = document.getElementById("randomButton");
       const toggleRunButton = document.getElementById("toggleRunButton");
       const stepButton = document.getElementById("stepButton");
       const resetButton = document.getElementById("resetButton");
@@ -622,7 +647,7 @@
       function inorder(node) {
         if (!node) return "";
         if (!node.left && !node.right) return String(node.value);
-        return `( ${inorder(node.left)} ${node.value} ${inorder(node.right)} )`;
+        return `${inorder(node.left)} ${node.value} ${inorder(node.right)}`;
       }
 
       function postorder(node) {
@@ -693,15 +718,36 @@
 
       function assignPositions(root) {
         let cursor = 0;
+        let maxDepth = 0;
         function walk(node, depth) {
           if (!node) return;
           walk(node.left, depth + 1);
-          node.x = 90 + cursor * 90;
-          node.y = 70 + depth * 90;
+          node.x = cursor;
+          node.y = depth;
           cursor += 1;
+          if (depth > maxDepth) maxDepth = depth;
           walk(node.right, depth + 1);
         }
         walk(root, 0);
+
+        // 等比缩放以适应固定 viewBox (720x420)
+        const viewW = 720, viewH = 420, margin = 50;
+        const availW = viewW - margin * 2;
+        const availH = viewH - margin * 2;
+        const needX = cursor > 1 ? cursor - 1 : 1;
+        const needY = maxDepth > 0 ? maxDepth : 1;
+        const scale = Math.min(availW / needX, availH / needY);
+        const offsetX = (viewW - needX * scale) / 2;
+        const offsetY = (viewH - needY * scale) / 2;
+
+        function scaleNode(node) {
+          if (!node) return;
+          node.x = offsetX + node.x * scale;
+          node.y = offsetY + node.y * scale;
+          scaleNode(node.left);
+          scaleNode(node.right);
+        }
+        scaleNode(root);
       }
 
       function currentSnapshot() {
@@ -851,7 +897,6 @@
         stackStat.textContent = String(snapshot.stackIds.length);
         nodeStat.textContent = String(countNodes(snapshot.root));
         stepText.textContent = snapshot.message;
-        speedValue.textContent = `${speedInput.value} 步/秒`;
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
 
@@ -876,11 +921,27 @@
       function scheduleNext() {
         stopTimer();
         if (!state.running) return;
-        const delay = Math.max(180, Math.round(1000 / Number(speedInput.value)));
         state.timer = setTimeout(() => {
           advance();
           if (state.running) scheduleNext();
-        }, delay);
+        }, 500);
+      }
+
+      function randomExpression() {
+        const ops = ["+", "-", "*"];
+        const maxDepth = Math.floor(Math.random() * 2) + 2;
+        function randTree(remaining) {
+          if (remaining <= 0) {
+            return String(Math.floor(Math.random() * 9) + 1);
+          }
+          const op = ops[Math.floor(Math.random() * ops.length)];
+          const leftDepth = Math.floor(Math.random() * remaining);
+          const rightDepth = Math.floor(Math.random() * remaining);
+          const left = randTree(leftDepth);
+          const right = randTree(rightDepth);
+          return `( ${left} ${op} ${right} )`;
+        }
+        return randTree(maxDepth);
       }
 
       function applyExpression() {
@@ -894,16 +955,10 @@
         render();
       }
 
-      exampleSelect.addEventListener("change", () => {
-        expressionInput.value = exampleSelect.value;
-        applyExpression();
-      });
-
       applyButton.addEventListener("click", applyExpression);
-
-      speedInput.addEventListener("input", () => {
-        render();
-        if (state.running) scheduleNext();
+      randomButton.addEventListener("click", () => {
+        expressionInput.value = randomExpression();
+        applyExpression();
       });
 
       toggleRunButton.addEventListener("click", () => {
