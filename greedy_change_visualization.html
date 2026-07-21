@@ -435,7 +435,7 @@
         <h3>目标金额</h3>
         <div class="content">
           <div class="input-wrap">
-            <input id="amountInput" type="number" min="1" max="30" step="1" value="11" placeholder="建议范围 1 - 30" />
+            <input id="amountInput" type="number" min="1" max="30" step="1" value="15" placeholder="建议范围 1 - 30" />
             <button id="applyButton" type="button">应用</button>
           </div>
         </div>
@@ -447,7 +447,6 @@
           <div class="select-wrap">
             <select id="coinSetSelect">
               <option value="fail">贪心失效</option>
-              <option value="teach">贪心可用</option>
               <option value="success">贪心成立</option>
             </select>
           </div>
@@ -533,14 +532,72 @@
 
   <script>
     (() => {
-      const coinSets = {
-        fail: { coins: [11, 5, 1], name: "{1, 5, 11}" },
-        teach: { coins: [5, 3, 1], name: "{1, 3, 5}" },
-        success: { coins: [25, 10, 5, 1], name: "{1, 5, 10, 25}" }
-      };
+      function greedyCount(coins, amount) {
+        let count = 0;
+        let rem = amount;
+        for (const coin of coins) {
+          count += Math.floor(rem / coin);
+          rem %= coin;
+        }
+        return count;
+      }
+
+      function dpMinCount(coins, amount) {
+        const dp = new Array(amount + 1).fill(Infinity);
+        dp[0] = 0;
+        for (let v = 1; v <= amount; v += 1) {
+          for (const c of coins) {
+            if (v >= c) dp[v] = Math.min(dp[v], dp[v - c] + 1);
+          }
+        }
+        return dp[amount];
+      }
+
+      function findFailingSet(amount) {
+        let best = null;
+        let bestDiff = 0;
+        for (let a = 2; a < amount; a += 1) {
+          for (let b = a + 1; b < amount; b += 1) {
+            const coins = [b, a, 1];
+            const g = greedyCount(coins, amount);
+            const o = dpMinCount(coins, amount);
+            if (g > o && g - o > bestDiff) {
+              bestDiff = g - o;
+              best = { coins: [b, a, 1], name: `{${[b, a, 1].join(", ")}}` };
+            }
+          }
+        }
+        return best;
+      }
 
       function currentCoins() {
-        return coinSets[coinSetSelect.value].coins;
+        return state.coins;
+      }
+
+      function coinSetName() {
+        return state.coinSetName;
+      }
+
+      function rebuild() {
+        const mode = coinSetSelect.value;
+        if (mode === "success") {
+          state.coins = [25, 10, 5, 1];
+          state.coinSetName = "{1, 5, 10, 25}";
+        } else {
+          const found = findFailingSet(state.amount);
+          if (found) {
+            state.coins = found.coins;
+            state.coinSetName = found.name;
+          } else {
+            state.coins = [11, 5, 1];
+            state.coinSetName = "{1, 5, 11}";
+          }
+        }
+        state.steps = buildSteps(state.amount);
+        state.index = 0;
+        state.running = false;
+        stopTimer();
+        render();
       }
 
       function pseudoLinesForCoins(coinsArr) {
@@ -580,7 +637,9 @@
       const pseudoList = document.getElementById("pseudoList");
 
       const state = {
-        amount: 11,
+        amount: 15,
+        coins: [11, 5, 1],
+        coinSetName: "{1, 5, 11}",
         steps: [],
         index: 0,
         running: false,
@@ -830,14 +889,10 @@
       }
 
       function applyAmount() {
-        const amount = Math.max(1, Math.min(30, Number(amountInput.value) || 11));
+        const amount = Math.max(1, Math.min(30, Number(amountInput.value) || 15));
         amountInput.value = String(amount);
         state.amount = amount;
-        state.steps = buildSteps(amount);
-        state.index = 0;
-        state.running = false;
-        stopTimer();
-        render();
+        rebuild();
       }
 
       applyButton.addEventListener("click", applyAmount);
@@ -859,17 +914,11 @@
         advance();
       });
 
-      coinSetSelect.addEventListener("change", () => {
-        const amount = state.amount;
-        state.steps = buildSteps(amount);
-        state.index = 0;
-        state.running = false;
-        stopTimer();
-        render();
-      });
+      coinSetSelect.addEventListener("change", rebuild);
 
-      state.steps = buildSteps(state.amount);
-      render();
+      state.amount = 15;
+      amountInput.value = "15";
+      rebuild();
     })();
   </script>
 </body>
