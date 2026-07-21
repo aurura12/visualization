@@ -1,364 +1,874 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>烫手山芋游戏可视化</title>
-  <style>
-    :root { --bg: #ffffff; --text: #111827; --muted: #4b5563; --line: #e5e7eb; --accent: #3db3d8; --button-bg: #ffffff; --button-border: #d1d5db; --shadow: 0 1px 2px rgba(0,0,0,0.04); --player: #e0f2fe; --player-active: #fed7aa; --player-out: #fee2e2; --player-winner: #dcfce7; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
-    body { padding: 20px 24px 28px; }
-    .page { max-width: 1140px; margin: 0 auto; }
-    .head { margin-bottom: 12px; }
-    .head h1 { margin: 0; font-size: clamp(30px,3.3vw,42px); font-weight: 400; letter-spacing: -0.02em; line-height: 1.1; }
-    .head p { margin: 10px 0 0; font-size: 15px; color: var(--muted); line-height: 1.45; }
-    .rule { height: 1px; background: var(--line); margin: 18px 0 22px; }
-    .info-card { position: relative; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 18px 22px 16px; margin-bottom: 18px; }
-    .info-card::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 4px; background: var(--accent); }
-    .info-card h2 { margin: 0 0 8px; font-size: 19px; font-weight: 500; }
-    .info-card p { margin: 0; font-size: 13px; line-height: 1.6; color: #1f2937; }
-    .controls { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 16px; margin-bottom: 16px; align-items: start; }
-    .control h3 { margin: 0 0 10px; font-size: 18px; font-weight: 400; text-align: center; }
-    .control .content { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    .button-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 210px; }
-    button, select { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
-    select { text-align: center; text-align-last: center; }
-    button { cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
-    button:hover, select:hover { background: #f8fafc; border-color: #cbd5e1; }
-    button:hover { transform: translateY(-1px); }
-    .slider-wrap, .select-wrap { width: 100%; max-width: 220px; display: grid; justify-items: center; gap: 8px; }
-    input[type="range"] { width: 100%; accent-color: #f8b84e; }
-    .slider-value { font-size: 14px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
-    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 4px 0 16px; }
-    .stat { text-align: center; padding: 12px 10px 10px; border: 1px solid var(--line); background: #fff; }
-    .stat .label { font-size: 14px; color: #1f2937; margin-bottom: 8px; }
-    .stat .value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .main { display: grid; grid-template-columns: minmax(0,620px) minmax(440px,1fr); gap: 16px; align-items: stretch; }
-    .plot-shell { position: relative; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); padding: 8px; }
-    svg { display: block; width: 100%; aspect-ratio: 720 / 600; }
-    .side-panel { border: 1px solid var(--line); background: #fff; box-shadow: var(--shadow); padding: 14px; }
-    .side-panel h3 { margin: 0 0 10px; font-size: 17px; font-weight: 500; }
-    .step-text { font-size: 13px; line-height: 1.65; color: #1f2937; padding-bottom: 10px; border-bottom: 1px solid var(--line); margin-bottom: 12px; min-height: 50px; }
-    .queue-display, .eliminated-box { font-size: 13px; line-height: 1.65; color: #1f2937; padding-bottom: 10px; margin-bottom: 12px; }
-    .queue-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; min-height: 30px; }
-    .queue-chip { padding: 4px 10px; border-radius: 999px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 12px; font-weight: 600; transition: all 0.2s; }
-    .queue-chip.active { background: var(--player-active); border-color: #c2410c; color: #92400e; transform: scale(1.1); }
-    .queue-chip.out { background: var(--player-out); border-color: #dc2626; color: #991b1b; text-decoration: line-through; }
-    .code-title { margin: 0 0 8px; font-size: 16px; font-weight: 500; }
-    .code-block { margin-bottom: 12px; border: 1px solid var(--line); background: #f8fafc; padding: 8px 0; overflow: hidden; }
-    .pseudo { display: grid; gap: 6px; font-size: 12px; color: #374151; font-family: "Cascadia Code","Consolas","Courier New",monospace; }
-    .pseudo-line { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; align-items: start; padding: 6px 12px; background: #f9fafb; border-left: 3px solid transparent; }
-    .pseudo-line.active { background: #fff7ed; border-left-color: #fdba74; }
-    .line-number { color: #94a3b8; text-align: right; user-select: none; }
-    .line-code { white-space: pre-wrap; overflow-wrap: break-word; }
-    .legend { position: absolute; top: 14px; right: 14px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin: 0; padding: 6px 10px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,0.9); border: 1px solid var(--line); border-radius: 6px; }
-    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #94a3b8; background: #fff; }
-    .legend-swatch.active { background: #fed7aa; border-color: #c2410c; }
-    .legend-swatch.out { background: #fee2e2; border-color: #dc2626; }
-    .legend-swatch.waiting { background: #e0f2fe; border-color: #0284c7; }
-    .legend-swatch.winner { background: #dcfce7; border-color: #16a34a; }
-    @media (max-width: 980px) {
-      body { padding: 18px 16px 24px; }
-      .controls, .stats, .main { grid-template-columns: 1fr; }
-      .control h3 { text-align: left; }
-      .control .content { align-items: stretch; }
-      .button-stack, .slider-wrap, .select-wrap, .legend { max-width: none; }
-    }
-  </style>
-</head>
-<body>
-<main class="page">
-  <header class="head">
-    <h1>烫手山芋游戏可视化</h1>
-    <p>用队列模拟"传递-淘汰"过程，观察队列的先进先出特性。</p>
-  </header>
-  <div class="rule"></div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Hot Potato游戏可视化</title>
+		<style>
+			:root {
+				--bg: #ffffff;
+				--text: #111827;
+				--muted: #4b5563;
+				--line: #e5e7eb;
+				--accent: #3db3d8;
+				--button-bg: #ffffff;
+				--button-border: #d1d5db;
+				--shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+				--player: #e0f2fe;
+				--player-active: #fed7aa;
+				--player-out: #fee2e2;
+				--player-winner: #dcfce7;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				min-height: 100%;
+				background: var(--bg);
+				color: var(--text);
+				font-family:
+					'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+					sans-serif;
+			}
+			body {
+				padding: 20px 24px 28px;
+			}
+			.page {
+				max-width: 1140px;
+				margin: 0 auto;
+			}
+			.head {
+				margin-bottom: 12px;
+			}
+			.head h1 {
+				margin: 0;
+				font-size: clamp(30px, 3.3vw, 42px);
+				font-weight: 400;
+				letter-spacing: -0.02em;
+				line-height: 1.1;
+			}
+			.head p {
+				margin: 10px 0 0;
+				font-size: 15px;
+				color: var(--muted);
+				line-height: 1.45;
+			}
+			.rule {
+				height: 1px;
+				background: var(--line);
+				margin: 18px 0 22px;
+			}
+			.info-card {
+				position: relative;
+				background: #fff;
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow);
+				padding: 18px 22px 16px;
+				margin-bottom: 18px;
+			}
+			.info-card::before {
+				content: '';
+				position: absolute;
+				left: -1px;
+				top: -1px;
+				bottom: -1px;
+				width: 4px;
+				background: var(--accent);
+			}
+			.info-card h2 {
+				margin: 0 0 8px;
+				font-size: 19px;
+				font-weight: 500;
+			}
+			.info-card p {
+				margin: 0;
+				font-size: 13px;
+				line-height: 1.6;
+				color: #1f2937;
+			}
+			.controls {
+				display: grid;
+				grid-template-columns: 1.2fr 1fr 1.2fr;
+				gap: 16px;
+				margin-bottom: 16px;
+				align-items: start;
+			}
+			.control h3 {
+				margin: 0 0 10px;
+				font-size: 18px;
+				font-weight: 400;
+				text-align: center;
+			}
+			.control .content {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+			}
+			.button-stack {
+				display: grid;
+				grid-template-columns: 1fr 1fr 1fr;
+				gap: 8px;
+				width: 100%;
+				max-width: 210px;
+			}
+			button,
+			select {
+				appearance: none;
+				border: 1px solid var(--button-border);
+				background: var(--button-bg);
+				color: #2563eb;
+				font: inherit;
+				font-size: 14px;
+				font-weight: 600;
+				padding: 8px 12px;
+				border-radius: 4px;
+				box-shadow: var(--shadow);
+				width: 100%;
+			}
+			select {
+				text-align: center;
+				text-align-last: center;
+			}
+			button {
+				cursor: pointer;
+				transition:
+					background 0.15s,
+					border-color 0.15s,
+					transform 0.15s;
+			}
+			button:hover,
+			select:hover {
+				background: #f8fafc;
+				border-color: #cbd5e1;
+			}
+			button:hover {
+				transform: translateY(-1px);
+			}
+			.slider-wrap,
+			.select-wrap {
+				width: 100%;
+				max-width: 220px;
+				display: grid;
+				justify-items: center;
+				gap: 8px;
+			}
+			input[type='range'] {
+				width: 100%;
+				accent-color: #f8b84e;
+			}
+			.slider-value {
+				font-size: 14px;
+				font-weight: 700;
+				color: #111827;
+				font-variant-numeric: tabular-nums;
+			}
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(4, minmax(0, 1fr));
+				gap: 10px;
+				margin: 4px 0 16px;
+			}
+			.stat {
+				text-align: center;
+				padding: 12px 10px 10px;
+				border: 1px solid var(--line);
+				background: #fff;
+			}
+			.stat .label {
+				font-size: 14px;
+				color: #1f2937;
+				margin-bottom: 8px;
+			}
+			.stat .value {
+				font-size: 18px;
+				font-weight: 700;
+				font-variant-numeric: tabular-nums;
+			}
+			.main {
+				display: grid;
+				grid-template-columns: minmax(0, 620px) minmax(440px, 1fr);
+				gap: 16px;
+				align-items: stretch;
+			}
+			.plot-shell {
+				position: relative;
+				background: #fff;
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow);
+				padding: 8px;
+			}
+			svg {
+				display: block;
+				width: 100%;
+				aspect-ratio: 720 / 600;
+			}
+			.side-panel {
+				border: 1px solid var(--line);
+				background: #fff;
+				box-shadow: var(--shadow);
+				padding: 14px;
+			}
+			.side-panel h3 {
+				margin: 0 0 10px;
+				font-size: 17px;
+				font-weight: 500;
+			}
+			.step-text {
+				font-size: 13px;
+				line-height: 1.65;
+				color: #1f2937;
+				padding-bottom: 10px;
+				border-bottom: 1px solid var(--line);
+				margin-bottom: 12px;
+				min-height: 50px;
+			}
+			.choice-box {
+				font-size: 13px;
+				line-height: 1.65;
+				color: #1f2937;
+				padding-bottom: 10px;
+				margin-bottom: 12px;
+			}
+			.queue-display,
+			.eliminated-box {
+				font-size: 13px;
+				line-height: 1.65;
+				color: #1f2937;
+			}
+			.queue-chips {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-top: 6px;
+				min-height: 30px;
+			}
+			.queue-chip {
+				padding: 4px 10px;
+				border-radius: 999px;
+				background: #eff6ff;
+				border: 1px solid #bfdbfe;
+				color: #1d4ed8;
+				font-size: 12px;
+				font-weight: 600;
+				transition: all 0.2s;
+			}
+			.queue-chip.active {
+				background: var(--player-active);
+				border-color: #c2410c;
+				color: #92400e;
+				transform: scale(1.1);
+			}
+			.queue-chip.out {
+				background: var(--player-out);
+				border-color: #dc2626;
+				color: #991b1b;
+				text-decoration: line-through;
+			}
+			.code-title {
+				margin: 0 0 8px;
+				font-size: 16px;
+				font-weight: 500;
+			}
+			.pseudo {
+				display: grid;
+				gap: 6px;
+				font-size: 12px;
+				color: #374151;
+				font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+			}
+			.pseudo-line {
+				display: grid;
+				grid-template-columns: 34px minmax(0, 1fr);
+				gap: 10px;
+				align-items: start;
+				padding: 6px 12px;
+				background: #f9fafb;
+				border-left: 3px solid transparent;
+			}
+			.pseudo-line.active {
+				background: #fff7ed;
+				border-left-color: #fdba74;
+			}
+			.line-number {
+				color: #94a3b8;
+				text-align: right;
+				user-select: none;
+			}
+			.line-code {
+				white-space: pre-wrap;
+				overflow-wrap: break-word;
+			}
+			.legend {
+				position: absolute;
+				top: 14px;
+				right: 14px;
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: flex-end;
+				gap: 10px;
+				margin: 0;
+				padding: 6px 10px;
+				font-size: 12px;
+				color: var(--muted);
+				background: rgba(255, 255, 255, 0.9);
+				border: 1px solid var(--line);
+				border-radius: 6px;
+			}
+			.legend-item {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.swatch {
+				width: 14px;
+				height: 14px;
+				border-radius: 3px;
+				border: 1px solid #94a3b8;
+				background: #fff;
+			}
+			.swatch.active {
+				background: #fed7aa;
+				border-color: #c2410c;
+			}
+			.swatch.out {
+				background: #fee2e2;
+				border-color: #dc2626;
+			}
+			.swatch.waiting {
+				background: #e0f2fe;
+				border-color: #0284c7;
+			}
+			.swatch.winner {
+				background: #dcfce7;
+				border-color: #16a34a;
+			}
+			@media (max-width: 980px) {
+				body {
+					padding: 18px 16px 24px;
+				}
+				.controls,
+				.stats,
+				.main {
+					grid-template-columns: 1fr;
+				}
+				.control h3 {
+					text-align: left;
+				}
+				.control .content {
+					align-items: stretch;
+				}
+				.button-stack,
+				.slider-wrap,
+				.select-wrap,
+				.legend {
+					max-width: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="page">
+			<header class="head">
+				<h1>Hot Potato游戏可视化</h1>
+				<p>用队列模拟"传递-淘汰"过程，观察队列的先进先出特性。</p>
+			</header>
+			<div class="rule"></div>
 
-  <section class="info-card">
-    <h2>说明</h2>
-    <p>孩子们排成一圈，依次传递一个"烫手山芋"。每传递一次，队首的孩子被移到队尾。当传递次数达到设定的 <strong>num</strong> 值时，当前拿着山芋的孩子被淘汰出局。游戏重复进行，直到只剩最后一人——即为胜利者。</p>
-    <p>页面用 <strong>队列（Queue）</strong> 模拟整个过程：每次传递将队首元素出队再入队（移到队尾），每 num 次传递淘汰一次队首元素。橙色高亮表示当前拿着山芋的孩子，红色表示已被淘汰。</p>
-  </section>
+			<section class="info-card">
+				<h2>说明</h2>
+				<p>
+					<strong>Hot Potato</strong
+					>是队列先进先出（FIFO）特性的经典教学游戏：孩子们排成一圈，依次传递一个"Hot
+					Potato"。游戏规则为每传递
+					<strong>num</strong>
+					次，当前拿着山芋的孩子被淘汰，直到只剩最后一人即为胜利者。
+				</p>
+				<p>
+					<strong>用队列模拟的过程：</strong
+					>首先将所有参与者按顺序加入队列。每传递一次，队首元素出队（<code>popleft</code>）再入队（<code>append</code>），模拟"移到了队尾"——这也对应圆形排列中顺时针移动一位。重复
+					num
+					次后，队首元素出队并被淘汰，不再重新入队。队列长度逐渐减少，直到只剩一人——即为胜利者。
+				</p>
+				<p>
+					图中<strong>橙色</strong>高亮当前持有者的位置（🔥图标），<strong>红色</strong>标记已被淘汰的参与者，<strong>绿色</strong>标记最后的胜利者。右侧面板同步显示队列的实时变化和淘汰顺序。
+				</p>
+			</section>
 
-  <section class="controls">
-    <div class="control">
-      <h3>游戏人数</h3>
-      <div class="content">
-        <div class="slider-wrap">
-          <input id="countSlider" type="range" min="4" max="10" step="1" value="6">
-          <div id="countValue" class="slider-value">6</div>
-        </div>
-      </div>
-    </div>
-    <div class="control">
-      <h3>传递次数</h3>
-      <div class="content">
-        <div class="slider-wrap">
-          <input id="numSlider" type="range" min="1" max="8" step="1" value="3">
-          <div id="numValue" class="slider-value">3</div>
-        </div>
-      </div>
-    </div>
-    <div class="control">
-      <h3>操作</h3>
-      <div class="content">
-        <div class="button-stack">
-          <button id="toggleRun" type="button">开始</button>
-          <button id="stepBtn" type="button">单步</button>
-          <button id="resetBtn" type="button">重置</button>
-        </div>
-      </div>
-    </div>
-  </section>
+			<section class="controls">
+				<div class="control">
+					<h3>游戏人数</h3>
+					<div class="content">
+						<div class="slider-wrap">
+							<input
+								id="countSlider"
+								type="range"
+								min="4"
+								max="10"
+								step="1"
+								value="6"
+							/>
+							<div id="countValue" class="slider-value">6</div>
+						</div>
+					</div>
+				</div>
+				<div class="control">
+					<h3>传递次数</h3>
+					<div class="content">
+						<div class="slider-wrap">
+							<input
+								id="numSlider"
+								type="range"
+								min="1"
+								max="8"
+								step="1"
+								value="3"
+							/>
+							<div id="numValue" class="slider-value">3</div>
+						</div>
+					</div>
+				</div>
+				<div class="control">
+					<h3>操作</h3>
+					<div class="content">
+						<div class="button-stack">
+							<button id="toggleRun" type="button">开始</button>
+							<button id="stepBtn" type="button">单步</button>
+							<button id="resetBtn" type="button">重置</button>
+						</div>
+					</div>
+				</div>
+			</section>
 
-  <section class="stats">
-    <div class="stat"><div class="label">当前持有者</div><div id="currentStat" class="value">-</div></div>
-    <div class="stat"><div class="label">剩余人数</div><div id="remainStat" class="value">6</div></div>
-    <div class="stat"><div class="label">已淘汰人数</div><div id="outStat" class="value">0</div></div>
-    <div class="stat"><div class="label">状态</div><div id="statusStat" class="value">未开始</div></div>
-  </section>
+			<section class="stats">
+				<div class="stat">
+					<div class="label">当前持有者</div>
+					<div id="currentStat" class="value">-</div>
+				</div>
+				<div class="stat">
+					<div class="label">剩余人数</div>
+					<div id="remainStat" class="value">6</div>
+				</div>
+				<div class="stat">
+					<div class="label">已淘汰人数</div>
+					<div id="outStat" class="value">0</div>
+				</div>
+				<div class="stat">
+					<div class="label">状态</div>
+					<div id="statusStat" class="value">未开始</div>
+				</div>
+			</section>
 
-  <section class="main">
-    <div class="plot-shell">
-      <svg id="circleSvg" viewBox="0 -50 720 550" aria-label="hot potato circle"></svg>
-      <div class="legend">
-        <span class="legend-item"><span class="legend-swatch waiting"></span>等待传递</span>
-        <span class="legend-item"><span class="legend-swatch active"></span>当前持有</span>
-        <span class="legend-item"><span class="legend-swatch out"></span>已淘汰</span>
-        <span class="legend-item"><span class="legend-swatch winner"></span>胜利者</span>
-      </div>
-    </div>
+			<section class="main">
+				<div class="plot-shell">
+					<svg
+						id="circleSvg"
+						viewBox="0 -50 720 550"
+						aria-label="hot potato circle"
+					></svg>
+					<div class="legend">
+						<span class="legend-item"
+							><span class="swatch waiting"></span>等待传递</span
+						>
+						<span class="legend-item"
+							><span class="swatch active"></span>当前持有</span
+						>
+						<span class="legend-item"
+							><span class="swatch out"></span>已淘汰</span
+						>
+						<span class="legend-item"
+							><span class="swatch winner"></span>胜利者</span
+						>
+					</div>
+				</div>
 
-    <aside class="side-panel">
-      <h3>过程说明</h3>
-      <div id="stepText" class="step-text"></div>
+				<aside class="side-panel">
+					<h3>过程说明</h3>
+					<div id="stepText" class="step-text"></div>
 
-      <h3 class="code-title">Python 代码</h3>
-      <div class="code-block"><div id="pseudoList" class="pseudo"></div></div>
+					<div class="choice-box">
+						<h3>当前决策</h3>
+						<div id="choiceText">等待开始。</div>
+					</div>
 
-      <div class="queue-display">
-        <h3>队列顺序</h3>
-        <div id="queueChips" class="queue-chips"></div>
-      </div>
+					<h3 class="code-title">Python 代码</h3>
+					<div id="pseudoList" class="pseudo"></div>
 
-      <div class="eliminated-box">
-        <h3>淘汰顺序</h3>
-        <div id="outList" class="queue-chips"></div>
-      </div>
-    </aside>
-  </section>
-</main>
+					<div class="queue-display">
+						<h3>队列顺序</h3>
+						<div id="queueChips" class="queue-chips"></div>
+					</div>
 
-<script>
-(() => {
-  const names = ["Alice", "Bill", "Cathy", "David", "Eve", "Frank", "Grace", "Henry", "Ivy", "Jack"];
+					<div class="eliminated-box">
+						<h3>淘汰顺序</h3>
+						<div id="outList" class="queue-chips"></div>
+					</div>
+				</aside>
+			</section>
+		</main>
 
-  const countSlider = document.getElementById("countSlider");
-  const countValue = document.getElementById("countValue");
-  const numSlider = document.getElementById("numSlider");
-  const numValue = document.getElementById("numValue");
-  const toggleRun = document.getElementById("toggleRun");
-  const stepBtn = document.getElementById("stepBtn");
-  const resetBtn = document.getElementById("resetBtn");
-  const currentStat = document.getElementById("currentStat");
-  const remainStat = document.getElementById("remainStat");
-  const outStat = document.getElementById("outStat");
-  const statusStat = document.getElementById("statusStat");
-  const circleSvg = document.getElementById("circleSvg");
-  const stepText = document.getElementById("stepText");
-  const queueChips = document.getElementById("queueChips");
-  const outList = document.getElementById("outList");
-  const pseudoList = document.getElementById("pseudoList");
+		<script>
+			(() => {
+				const names = [
+					'Alice',
+					'Bill',
+					'Cathy',
+					'David',
+					'Eve',
+					'Frank',
+					'Grace',
+					'Henry',
+					'Ivy',
+					'Jack',
+				];
 
-  const pseudoLines = [
-    "def hot_potato(players, num):",
-    "    queue = deque(players)",
-    "    while len(queue) > 1:",
-    "        for _ in range(num):",
-    "            queue.append(queue.popleft())",
-    "        queue.popleft()",
-    "    return queue[0]"
-  ];
+				const countSlider = document.getElementById('countSlider');
+				const countValue = document.getElementById('countValue');
+				const numSlider = document.getElementById('numSlider');
+				const numValue = document.getElementById('numValue');
+				const toggleRun = document.getElementById('toggleRun');
+				const stepBtn = document.getElementById('stepBtn');
+				const resetBtn = document.getElementById('resetBtn');
+				const currentStat = document.getElementById('currentStat');
+				const remainStat = document.getElementById('remainStat');
+				const outStat = document.getElementById('outStat');
+				const statusStat = document.getElementById('statusStat');
+				const circleSvg = document.getElementById('circleSvg');
+				const stepText = document.getElementById('stepText');
+				const queueChips = document.getElementById('queueChips');
+				const outList = document.getElementById('outList');
+				const pseudoList = document.getElementById('pseudoList');
+				const choiceText = document.getElementById('choiceText');
 
-  const state = {
-    queue: [], steps: [], index: 0,
-    running: false, timer: null
-  };
+				const pseudoLines = [
+					'def hot_potato(players, num):',
+					'    queue = deque(players)',
+					'    while len(queue) > 1:',
+					'        for _ in range(num):',
+					'            queue.append(queue.popleft())',
+					'        queue.popleft()',
+					'    return queue[0]',
+				];
 
-  function buildSteps(players, num) {
-    const steps = [];
-    const q = players.slice();
-    const eliminated = [];
+				const state = {
+					queue: [],
+					steps: [],
+					index: 0,
+					running: false,
+					timer: null,
+				};
 
-    steps.push({ queue: q.slice(), active: null, eliminated: eliminated.slice(), phase: "init", message: `游戏开始，${players.length} 人参与，每传递 ${num} 次淘汰一人。`, decision: "初始队列：" + q.join("、"), pseudo: 0 });
+				function buildSteps(players, num) {
+					const steps = [];
+					const q = players.slice();
+					const eliminated = [];
 
-    while (q.length > 1) {
-      for (let i = 0; i < num; i++) {
-        const front = q.shift();
-        q.push(front);
-        steps.push({ queue: q.slice(), active: front, eliminated: eliminated.slice(), phase: "pass", message: `第 ${steps.length + 1} 步：${front} 把山芋传给 ${q[0]}。`, decision: `传递 ${i + 1}/${num}。`, pseudo: 3, passCount: i + 1 });
-      }
-      const out = q.shift();
-      eliminated.push(out);
-      steps.push({ queue: q.slice(), active: null, eliminated: eliminated.slice(), phase: "out", message: `${out} 接到了烫手山芋，被淘汰出局！（已淘汰 ${eliminated.length} 人）`, decision: `淘汰：${out}，剩余 ${q.length} 人。`, pseudo: 4, passCount: num });
-    }
+					steps.push({
+						queue: q.slice(),
+						active: null,
+						eliminated: eliminated.slice(),
+						phase: 'init',
+						message: `游戏开始，${players.length} 人参与，每传递 ${num} 次淘汰一人。`,
+						decision: '初始队列：' + q.join('、'),
+						pseudo: 0,
+					});
 
-    const winner = q[0];
-    eliminated.push(winner);
-    steps.push({ queue: [], active: null, eliminated: eliminated.slice(), phase: "done", message: `游戏结束！${winner} 是最后的胜利者！`, decision: `胜利者：${winner}`, pseudo: 6, passCount: num });
+					while (q.length > 1) {
+						for (let i = 0; i < num; i++) {
+							const front = q.shift();
+							q.push(front);
+							steps.push({
+								queue: q.slice(),
+								active: front,
+								eliminated: eliminated.slice(),
+								phase: 'pass',
+								message: `第 ${steps.length + 1} 步：${front} 把山芋传给 ${q[0]}。`,
+								decision: `传递 ${i + 1}/${num}。`,
+								pseudo: 4,
+								passCount: i + 1,
+							});
+						}
+						const out = q.shift();
+						eliminated.push(out);
+						steps.push({
+							queue: q.slice(),
+							active: null,
+							eliminated: eliminated.slice(),
+							phase: 'out',
+							message: `${out} 接到了Hot Potato，被淘汰出局！（已淘汰 ${eliminated.length} 人）`,
+							decision: `淘汰：${out}，剩余 ${q.length} 人。`,
+							pseudo: 5,
+							passCount: num,
+						});
+					}
 
-    return steps;
-  }
+					const winner = q[0];
+					eliminated.push(winner);
+					steps.push({
+						queue: [],
+						active: null,
+						eliminated: eliminated.slice(),
+						phase: 'done',
+						message: `游戏结束！${winner} 是最后的胜利者！`,
+						decision: `胜利者：${winner}`,
+						pseudo: 6,
+						passCount: num,
+					});
 
-  function getPlayers() {
-    const n = Number(countSlider.value);
-    return names.slice(0, n);
-  }
+					return steps;
+				}
 
-  function rebuild() {
-    countValue.textContent = countSlider.value;
-    numValue.textContent = numSlider.value;
-    const players = getPlayers();
-    const num = Number(numSlider.value);
-    state.steps = buildSteps(players, num);
-    state.index = 0;
-    state.running = false;
-    stopTimer();
-    render();
-  }
+				function getPlayers() {
+					const n = Number(countSlider.value);
+					return names.slice(0, n);
+				}
 
-  function currentStep() {
-    return state.steps[Math.min(state.index, state.steps.length - 1)];
-  }
+				function rebuild() {
+					countValue.textContent = countSlider.value;
+					numValue.textContent = numSlider.value;
+					const players = getPlayers();
+					const num = Number(numSlider.value);
+					state.steps = buildSteps(players, num);
+					state.index = 0;
+					state.running = false;
+					stopTimer();
+					render();
+				}
 
-  function render() {
-    const step = currentStep();
-    const players = getPlayers();
-    const n = players.length;
+				function currentStep() {
+					return state.steps[Math.min(state.index, state.steps.length - 1)];
+				}
 
-    // SVG
-    circleSvg.innerHTML = "";
-    const cx = 360, cy = 250, r = Math.min(n, 6) * 30 + 50;
+				function render() {
+					const step = currentStep();
+					const players = getPlayers();
+					const n = players.length;
 
-    // Draw circle line
-    const circleLine = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-    circleLine.setAttribute("cx", cx); circleLine.setAttribute("cy", cy);
-    circleLine.setAttribute("rx", r); circleLine.setAttribute("ry", r * 0.85);
-    circleLine.setAttribute("fill", "none"); circleLine.setAttribute("stroke", "#e5e7eb");
-    circleLine.setAttribute("stroke-width", "2"); circleLine.setAttribute("stroke-dasharray", "6,4");
-    circleSvg.appendChild(circleLine);
+					// SVG
+					circleSvg.innerHTML = '';
+					const cx = 360,
+						cy = 250,
+						r = Math.min(n, 6) * 30 + 50;
 
-    const eliminated = new Set(step.eliminated || []);
-    const winner = step.phase === "done" ? step.eliminated[step.eliminated.length - 1] : null;
-    const allPlayers = players;
+					// Draw circle line
+					const circleLine = document.createElementNS(
+						'http://www.w3.org/2000/svg',
+						'ellipse',
+					);
+					circleLine.setAttribute('cx', cx);
+					circleLine.setAttribute('cy', cy);
+					circleLine.setAttribute('rx', r);
+					circleLine.setAttribute('ry', r * 0.85);
+					circleLine.setAttribute('fill', 'none');
+					circleLine.setAttribute('stroke', '#e5e7eb');
+					circleLine.setAttribute('stroke-width', '2');
+					circleLine.setAttribute('stroke-dasharray', '6,4');
+					circleSvg.appendChild(circleLine);
 
-    allPlayers.forEach((name, idx) => {
-      const angle = -Math.PI / 2 + (Math.PI * 2 * idx) / n;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r * 0.85;
+					const eliminated = new Set(step.eliminated || []);
+					const winner =
+						step.phase === 'done'
+							? step.eliminated[step.eliminated.length - 1]
+							: null;
+					const allPlayers = players;
 
-      let fill = "#e0f2fe", stroke = "#0284c7", sw = 2, opacity = 1;
-      if (winner === name) { fill = "#dcfce7"; stroke = "#16a34a"; sw = 3; }
-      else if (step.active === name) { fill = "#fed7aa"; stroke = "#c2410c"; sw = 3; }
-      else if (eliminated.has(name) && step.phase !== "done") { fill = "#fee2e2"; stroke = "#dc2626"; sw = 2; opacity = 0.6; }
+					allPlayers.forEach((name, idx) => {
+						const angle = -Math.PI / 2 + (Math.PI * 2 * idx) / n;
+						const x = cx + Math.cos(angle) * r;
+						const y = cy + Math.sin(angle) * r * 0.85;
 
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", x); circle.setAttribute("cy", y);
-      circle.setAttribute("r", 30); circle.setAttribute("fill", fill);
-      circle.setAttribute("stroke", stroke); circle.setAttribute("stroke-width", sw);
-      circle.setAttribute("opacity", opacity);
-      circleSvg.appendChild(circle);
+						let fill = '#e0f2fe',
+							stroke = '#0284c7',
+							sw = 2,
+							opacity = 1;
+						if (winner === name) {
+							fill = '#dcfce7';
+							stroke = '#16a34a';
+							sw = 3;
+						} else if (step.active === name) {
+							fill = '#fed7aa';
+							stroke = '#c2410c';
+							sw = 3;
+						} else if (eliminated.has(name) && step.phase !== 'done') {
+							fill = '#fee2e2';
+							stroke = '#dc2626';
+							sw = 2;
+							opacity = 0.6;
+						}
 
-      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.setAttribute("x", x); label.setAttribute("y", y - 4);
-      label.setAttribute("text-anchor", "middle"); label.setAttribute("font-size", "11");
-      label.setAttribute("fill", "#374151"); label.textContent = name;
-      circleSvg.appendChild(label);
+						const circle = document.createElementNS(
+							'http://www.w3.org/2000/svg',
+							'circle',
+						);
+						circle.setAttribute('cx', x);
+						circle.setAttribute('cy', y);
+						circle.setAttribute('r', 30);
+						circle.setAttribute('fill', fill);
+						circle.setAttribute('stroke', stroke);
+						circle.setAttribute('stroke-width', sw);
+						circle.setAttribute('opacity', opacity);
+						circleSvg.appendChild(circle);
 
-      if (step.active === name) {
-        const potato = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        potato.setAttribute("x", x); potato.setAttribute("y", y + 16);
-        potato.setAttribute("text-anchor", "middle"); potato.setAttribute("font-size", "16");
-        potato.textContent = "🔥";
-        circleSvg.appendChild(potato);
-      }
-    });
+						const label = document.createElementNS(
+							'http://www.w3.org/2000/svg',
+							'text',
+						);
+						label.setAttribute('x', x);
+						label.setAttribute('y', y - 4);
+						label.setAttribute('text-anchor', 'middle');
+						label.setAttribute('font-size', '14');
+						label.setAttribute('fill', '#374151');
+						label.textContent = name;
+						circleSvg.appendChild(label);
 
-    // Stats
-    currentStat.textContent = step.active || (step.phase === "done" ? "已结束" : "-");
-    const remaining = step.phase === "done" ? 0 : step.queue.length;
-    remainStat.textContent = String(remaining || 0);
-    const outCount = step.eliminated ? step.eliminated.length - (step.phase === "done" ? 1 : 0) : 0;
-    outStat.textContent = String(outCount);
-    statusStat.textContent = state.running ? "自动播放" : (state.index === 0 ? "未开始" : (step.phase === "done" ? "已结束" : "暂停"));
-    stepText.textContent = step.message;
+						if (step.active === name) {
+							const potato = document.createElementNS(
+								'http://www.w3.org/2000/svg',
+								'text',
+							);
+							potato.setAttribute('x', x);
+							potato.setAttribute('y', y + 16);
+							potato.setAttribute('text-anchor', 'middle');
+							potato.setAttribute('font-size', '16');
+							potato.textContent = '🔥';
+							circleSvg.appendChild(potato);
+						}
+					});
 
-    toggleRun.textContent = state.running ? "暂停" : "开始";
+					// Stats
+					currentStat.textContent =
+						step.active || (step.phase === 'done' ? '已结束' : '-');
+					const remaining = step.phase === 'done' ? 0 : step.queue.length;
+					remainStat.textContent = String(remaining || 0);
+					const outCount = step.eliminated
+						? step.eliminated.length - (step.phase === 'done' ? 1 : 0)
+						: 0;
+					outStat.textContent = String(outCount);
+					statusStat.textContent = state.running
+						? '自动播放'
+						: state.index === 0
+							? '未开始'
+							: step.phase === 'done'
+								? '已结束'
+								: '暂停';
+					stepText.textContent = step.message;
+					choiceText.textContent = step.decision || '等待开始。';
 
-    // Pseudo
-    pseudoList.innerHTML = "";
-    pseudoLines.forEach((line, idx) => {
-      const el = document.createElement("div"); el.className = "pseudo-line";
-      if (idx === step.pseudo) el.classList.add("active");
-      const num = document.createElement("div"); num.className = "line-number"; num.textContent = String(idx + 1);
-      const cd = document.createElement("div"); cd.className = "line-code"; cd.textContent = line;
-      el.append(num, cd); pseudoList.appendChild(el);
-    });
+					toggleRun.textContent = state.running ? '暂停' : '开始';
 
-    // Queue order
-    queueChips.innerHTML = "";
-    if (step.queue.length === 0 && step.phase !== "done") {
-      const chip = document.createElement("span"); chip.className = "queue-chip"; chip.textContent = "空"; queueChips.appendChild(chip);
-    }
-    (step.queue || []).forEach((name, idx) => {
-      const chip = document.createElement("span"); chip.className = "queue-chip";
-      chip.textContent = idx === 0 && step.active ? `${name} ← 持有` : name;
-      queueChips.appendChild(chip);
-    });
+					// Pseudo
+					pseudoList.innerHTML = '';
+					pseudoLines.forEach((line, idx) => {
+						const el = document.createElement('div');
+						el.className = 'pseudo-line';
+						if (idx === step.pseudo) el.classList.add('active');
+						const num = document.createElement('div');
+						num.className = 'line-number';
+						num.textContent = String(idx + 1);
+						const cd = document.createElement('div');
+						cd.className = 'line-code';
+						cd.textContent = line;
+						el.append(num, cd);
+						pseudoList.appendChild(el);
+					});
 
-    // Eliminated list
-    outList.innerHTML = "";
-    if (!step.eliminated || step.eliminated.length === 0) {
-      const chip = document.createElement("span"); chip.className = "queue-chip"; chip.textContent = "暂无"; outList.appendChild(chip);
-    } else {
-      const showEliminated = step.phase === "done" ? step.eliminated.slice(0, -1) : step.eliminated;
-      showEliminated.forEach(name => {
-        const chip = document.createElement("span"); chip.className = "queue-chip out";
-        chip.textContent = name; outList.appendChild(chip);
-      });
-      if (step.phase === "done") {
-        const chip = document.createElement("span"); chip.className = "queue-chip";
-        chip.style.background = "#dcfce7"; chip.style.borderColor = "#16a34a"; chip.style.color = "#166534";
-        chip.textContent = `🏆 ${step.eliminated[step.eliminated.length - 1]}`;
-        outList.appendChild(chip);
-      }
-    }
-  }
+					// Queue order
+					queueChips.innerHTML = '';
+					if (step.queue.length === 0 && step.phase !== 'done') {
+						const chip = document.createElement('span');
+						chip.className = 'queue-chip';
+						chip.textContent = '空';
+						queueChips.appendChild(chip);
+					}
+					(step.queue || []).forEach((name, idx) => {
+						const chip = document.createElement('span');
+						chip.className = 'queue-chip';
+						chip.textContent =
+							idx === 0 && step.active ? `${name} ← 持有` : name;
+						queueChips.appendChild(chip);
+					});
 
-  function stopTimer() { if (state.timer !== null) { clearTimeout(state.timer); state.timer = null; } }
-  function advance() {
-    if (state.index < state.steps.length - 1) { state.index++; render(); }
-    else { state.running = false; stopTimer(); render(); }
-  }
-  function scheduleNext() {
-    stopTimer(); if (!state.running) return;
-    state.timer = setTimeout(() => { advance(); if (state.running && state.index < state.steps.length - 1) scheduleNext(); }, 650);
-  }
+					// Eliminated list
+					outList.innerHTML = '';
+					if (!step.eliminated || step.eliminated.length === 0) {
+						const chip = document.createElement('span');
+						chip.className = 'queue-chip';
+						chip.textContent = '暂无';
+						outList.appendChild(chip);
+					} else {
+						const showEliminated =
+							step.phase === 'done'
+								? step.eliminated.slice(0, -1)
+								: step.eliminated;
+						showEliminated.forEach((name) => {
+							const chip = document.createElement('span');
+							chip.className = 'queue-chip out';
+							chip.textContent = name;
+							outList.appendChild(chip);
+						});
+						if (step.phase === 'done') {
+							const chip = document.createElement('span');
+							chip.className = 'queue-chip';
+							chip.style.background = '#dcfce7';
+							chip.style.borderColor = '#16a34a';
+							chip.style.color = '#166534';
+							chip.textContent = `🏆 ${step.eliminated[step.eliminated.length - 1]}`;
+							outList.appendChild(chip);
+						}
+					}
+				}
 
-  countSlider.addEventListener("input", rebuild);
-  numSlider.addEventListener("input", rebuild);
-  toggleRun.addEventListener("click", () => {
-    if (state.index >= state.steps.length - 1) state.index = 0;
-    state.running = !state.running; render();
-    if (state.running) scheduleNext(); else stopTimer();
-  });
-  stepBtn.addEventListener("click", () => { state.running = false; stopTimer(); advance(); });
-  resetBtn.addEventListener("click", () => { state.running = false; stopTimer(); state.index = 0; render(); });
+				function stopTimer() {
+					if (state.timer !== null) {
+						clearTimeout(state.timer);
+						state.timer = null;
+					}
+				}
+				function advance() {
+					if (state.index < state.steps.length - 1) {
+						state.index++;
+						render();
+					} else {
+						state.running = false;
+						stopTimer();
+						render();
+					}
+				}
+				function scheduleNext() {
+					stopTimer();
+					if (!state.running) return;
+					state.timer = setTimeout(() => {
+						advance();
+						if (state.running && state.index < state.steps.length - 1)
+							scheduleNext();
+					}, 650);
+				}
 
-  rebuild();
-})();
-</script>
-</body>
+				countSlider.addEventListener('input', rebuild);
+				numSlider.addEventListener('input', rebuild);
+				toggleRun.addEventListener('click', () => {
+					if (state.index >= state.steps.length - 1) state.index = 0;
+					state.running = !state.running;
+					render();
+					if (state.running) scheduleNext();
+					else stopTimer();
+				});
+				stepBtn.addEventListener('click', () => {
+					state.running = false;
+					stopTimer();
+					advance();
+				});
+				resetBtn.addEventListener('click', () => {
+					state.running = false;
+					stopTimer();
+					state.index = 0;
+					render();
+				});
+
+				rebuild();
+			})();
+		</script>
+	</body>
 </html>
