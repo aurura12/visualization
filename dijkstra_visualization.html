@@ -448,7 +448,7 @@
         <h3>节点数</h3>
         <div class="content">
           <div class="input-wrap">
-            <input id="nodeCountInput" type="number" min="4" max="10" step="1" value="7" placeholder="建议范围 4 - 10" />
+            <input id="nodeCountInput" type="number" min="4" max="12" step="1" value="10" placeholder="建议范围 4 - 12" />
             <button id="randomizeButton" type="button">随机生成</button>
           </div>
         </div>
@@ -482,7 +482,7 @@
       </div>
       <div class="stat">
         <div class="label">已确定顶点</div>
-        <div id="settledCountStat" class="value">0 / 7</div>
+        <div id="settledCountStat" class="value">0 / 10</div>
       </div>
       <div class="stat">
         <div class="label">当前轮次</div>
@@ -552,7 +552,7 @@
         }
 
         const completeEdgeCount = (count * (count - 1)) / 2;
-        const targetEdges = Math.min(completeEdgeCount, Math.max(count + 2, Math.floor(completeEdgeCount * 0.6)));
+        const targetEdges = Math.min(completeEdgeCount, Math.max(count + 2, Math.floor(completeEdgeCount * 0.45)));
         let attempts = 0;
         while (edges.length < targetEdges && attempts < completeEdgeCount * 6) {
           const a = Math.floor(Math.random() * count);
@@ -613,7 +613,7 @@
       const AUTO_DELAY = 780;
 
       const state = {
-        graph: makeGraph(7),
+        graph: makeGraph(10),
         source: "A",
         running: false,
         timer: null,
@@ -648,7 +648,7 @@
       }
 
       function generateRandomGraph() {
-        const count = Math.max(4, Math.min(10, Number(nodeCountInput.value) || 7));
+        const count = Math.max(4, Math.min(12, Number(nodeCountInput.value) || 10));
         nodeCountInput.value = String(count);
         state.graph = makeGraph(count);
         state.source = state.graph.nodes[0].id;
@@ -967,7 +967,7 @@
       });
 
       nodeCountInput.addEventListener("change", () => {
-        const count = Math.max(4, Math.min(10, Number(nodeCountInput.value) || 7));
+        const count = Math.max(4, Math.min(12, Number(nodeCountInput.value) || 10));
         nodeCountInput.value = String(count);
       });
 
