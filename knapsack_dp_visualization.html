@@ -123,10 +123,10 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
-      max-width: 210px;
+      max-width: 320px;
     }
 
     button,
@@ -138,6 +138,7 @@
       font: inherit;
       font-size: 14px;
       font-weight: 600;
+      white-space: nowrap;
       padding: 8px 12px;
       border-radius: 4px;
       box-shadow: var(--shadow);
@@ -450,6 +451,7 @@
           <div class="button-stack">
             <button id="toggleRunButton" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
+            <button id="backButton" type="button">后退</button>
             <button id="resetButton" type="button">重置</button>
             <button id="jumpButton" type="button">跳到回溯</button>
           </div>
@@ -560,6 +562,7 @@
 
       const toggleRunButton = document.getElementById("toggleRunButton");
       const stepButton = document.getElementById("stepButton");
+      const backButton = document.getElementById("backButton");
       const resetButton = document.getElementById("resetButton");
       const jumpButton = document.getElementById("jumpButton");
       const speedInput = document.getElementById("speedInput");
@@ -897,6 +900,15 @@
         state.running = false;
         stopTimer();
         advanceStep();
+      });
+
+      backButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        if (state.index > 0) {
+          state.index -= 1;
+          render();
+        }
       });
 
       resetButton.addEventListener("click", reset);

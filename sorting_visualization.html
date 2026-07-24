@@ -121,10 +121,10 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
-      max-width: 200px;
+      max-width: 320px;
     }
 
     button,
@@ -136,6 +136,7 @@
       font: inherit;
       font-size: 14px;
       font-weight: 600;
+      white-space: nowrap;
       padding: 8px 12px;
       border-radius: 4px;
       box-shadow: var(--shadow);
@@ -434,6 +435,7 @@
           <div class="button-stack">
             <button id="toggleRunButton" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
+            <button id="backButton" type="button">后退</button>
             <button id="shuffleButton" type="button">打乱</button>
             <button id="resetButton" type="button">重置</button>
           </div>
@@ -494,6 +496,7 @@
       const sizeValue = document.getElementById("sizeValue");
       const toggleRunButton = document.getElementById("toggleRunButton");
       const stepButton = document.getElementById("stepButton");
+      const backButton = document.getElementById("backButton");
       const shuffleButton = document.getElementById("shuffleButton");
       const resetButton = document.getElementById("resetButton");
       const stepStat = document.getElementById("stepStat");
@@ -1033,6 +1036,15 @@
         state.running = false;
         stopTimer();
         advanceStep();
+      });
+
+      backButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        if (state.stepIndex > 0) {
+          state.stepIndex -= 1;
+          render();
+        }
       });
 
       shuffleButton.addEventListener("click", () => {

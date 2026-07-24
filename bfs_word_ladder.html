@@ -122,7 +122,7 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1.5fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1.5fr;
       gap: 8px;
       width: 100%;
       max-width: 320px;
@@ -137,6 +137,7 @@
 				font: inherit;
 				font-size: 14px;
 				font-weight: 600;
+				white-space: nowrap;
 				padding: 8px 12px;
 				border-radius: 4px;
 				box-shadow: var(--shadow);
@@ -487,6 +488,7 @@
 						<div class="button-stack">
 							<button id="toggleRunButton" type="button">开始</button>
 							<button id="stepButton" type="button">单步</button>
+							<button id="backButton" type="button">后退</button>
 							<button id="resetButton" type="button">重置</button>
 							<button id="swapButton" type="button">交换起终点</button>
 						</div>
@@ -609,6 +611,7 @@
 				const stepButton = document.getElementById('stepButton');
 				const resetButton = document.getElementById('resetButton');
 				const swapButton = document.getElementById('swapButton');
+				const backButton = document.getElementById('backButton');
 				const currentStat = document.getElementById('currentStat');
 				const queueStat = document.getElementById('queueStat');
 				const visitedStat = document.getElementById('visitedStat');
@@ -638,6 +641,7 @@
 					stepMessage: '',
 					highlightedEdges: new Set(),
 					activePseudo: 0,
+					history: [],
 				};
 
 				function differsByOne(a, b) {
@@ -740,9 +744,10 @@
 					targetSelect.value = state.target;
 				}
 
-				function resetSearch() {
-					stopTimer();
-					state.running = false;
+			function resetSearch() {
+				stopTimer();
+				state.running = false;
+				state.history = [];
 					state.queue = [state.source];
 					state.visited = new Set([state.source]);
 					state.previous = {};
@@ -791,8 +796,25 @@
 					return edges;
 				}
 
-				function stepSearch() {
-					if (state.finished) return;
+			function stepSearch() {
+				// Save snapshot for undo
+				const snapshot = {
+					queue: [...state.queue],
+					visited: new Set(state.visited),
+					distance: { ...state.distance },
+					previous: { ...state.previous },
+					current: state.current,
+					found: state.found,
+					finished: state.finished,
+					stepCount: state.stepCount,
+					stepMessage: state.stepMessage,
+					activePseudo: state.activePseudo,
+					highlightedEdges: new Set(state.highlightedEdges),
+					running: state.running,
+				};
+				state.history.push(snapshot);
+
+				if (state.finished) return;
 					if (state.queue.length === 0) {
 						state.finished = true;
 						state.stepMessage = `队列已空，未找到从 ${state.source} 到 ${state.target} 的词梯。`;
@@ -1101,13 +1123,34 @@
 					render();
 				});
 
-				stepButton.addEventListener('click', () => {
-					state.running = false;
-					stopTimer();
-					stepSearch();
-				});
+			stepButton.addEventListener('click', () => {
+				state.running = false;
+				stopTimer();
+				stepSearch();
+			});
 
-				resetButton.addEventListener('click', () => {
+			backButton.addEventListener('click', () => {
+				state.running = false;
+				stopTimer();
+				if (state.history.length > 0) {
+					const snap = state.history.pop();
+					state.queue = snap.queue;
+					state.visited = snap.visited;
+					state.distance = snap.distance;
+					state.previous = snap.previous;
+					state.current = snap.current;
+					state.found = snap.found;
+					state.finished = snap.finished;
+					state.stepCount = snap.stepCount;
+					state.stepMessage = snap.stepMessage;
+					state.activePseudo = snap.activePseudo;
+					state.highlightedEdges = snap.highlightedEdges;
+					state.running = snap.running;
+					render();
+				}
+			});
+
+			resetButton.addEventListener('click', () => {
 					resetSearch();
 				});
 

@@ -122,10 +122,10 @@
 
     .button-stack {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
-      max-width: 210px;
+      max-width: 280px;
     }
 
     button,
@@ -138,6 +138,7 @@
       font-size: 15px;
       font-weight: 600;
       padding: 8px 12px;
+      white-space: nowrap;
       border-radius: 4px;
       box-shadow: var(--shadow);
     }
@@ -469,6 +470,7 @@
           <div class="button-stack">
             <button id="toggleRun" type="button">开始</button>
             <button id="stepButton" type="button">单步</button>
+            <button id="backButton" type="button">后退</button>
             <button id="resetButton" type="button">重置</button>
           </div>
         </div>
@@ -587,6 +589,7 @@
       const randomizeButton = document.getElementById("randomizeButton");
       const toggleRunButton = document.getElementById("toggleRun");
       const stepButton = document.getElementById("stepButton");
+      const backButton = document.getElementById("backButton");
       const resetButton = document.getElementById("resetButton");
       const sourceSelect = document.getElementById("sourceSelect");
       const currentNodeStat = document.getElementById("currentNodeStat");
@@ -624,7 +627,8 @@
         stepCount: 0,
         stepMessage: "请选择起点后开始。",
         highlightedEdges: new Set(),
-        activeLine: 3
+        activeLine: 3,
+        history: [],
       };
 
       function makeSvgElement(tag, attrs) {
@@ -667,6 +671,7 @@
         state.stepMessage = `起点设为 ${state.source}，初始距离为 0，其余顶点为 ∞。`;
         state.highlightedEdges = new Set();
         state.activeLine = 3;
+        state.history = [];
 
         state.graph.nodes.forEach((node) => {
           state.distances[node.id] = node.id === state.source ? 0 : Infinity;
@@ -696,6 +701,19 @@
       }
 
       function stepAlgorithm() {
+        // Save snapshot for undo
+        const snapshot = {
+            distances: {...state.distances},
+            previous: {...state.previous},
+            settled: new Set(state.settled),
+            current: state.current,
+            stepCount: state.stepCount,
+            stepMessage: state.stepMessage,
+            highlightedEdges: new Set(state.highlightedEdges),
+            activeLine: state.activeLine
+        };
+        state.history.push(snapshot);
+
         const nextNode = getNextNode();
         state.highlightedEdges = new Set();
 
@@ -955,6 +973,24 @@
 
       resetButton.addEventListener("click", () => {
         resetAlgorithm();
+      });
+
+      backButton.addEventListener("click", () => {
+        state.running = false;
+        stopTimer();
+        if (state.history.length > 0) {
+          const snap = state.history.pop();
+          state.distances = snap.distances;
+          state.previous = snap.previous;
+          state.settled = snap.settled;
+          state.current = snap.current;
+          state.stepCount = snap.stepCount;
+          state.stepMessage = snap.stepMessage;
+          state.highlightedEdges = snap.highlightedEdges;
+          state.activeLine = snap.activeLine;
+          updateStats();
+          render();
+        }
       });
 
       randomizeButton.addEventListener("click", () => {

@@ -30,8 +30,8 @@
     .controls { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 16px; margin-bottom: 16px; align-items: start; }
     .control h3 { margin: 0 0 10px; font-size: 18px; font-weight: 400; text-align: center; }
     .control .content { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    .button-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 210px; }
-    button, select, input[type="number"] { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
+    .button-stack { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 280px; }
+    button, select, input[type="number"] { appearance: none; border: 1px solid var(--button-border); background: var(--button-bg); color: #2563eb; font: inherit; font-size: 14px; font-weight: 600; white-space: nowrap; padding: 8px 12px; border-radius: 4px; box-shadow: var(--shadow); width: 100%; }
     select { text-align: center; text-align-last: center; }
     input[type="number"] { color: #111827; }
     button { cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
@@ -121,6 +121,7 @@
         <div class="button-stack">
           <button id="toggleRun" type="button">开始</button>
           <button id="stepBtn" type="button">单步</button>
+          <button id="backBtn" type="button">后退</button>
           <button id="resetBtn" type="button">重置</button>
         </div>
       </div>
@@ -172,6 +173,7 @@
   const randomizeBtn = document.getElementById("randomizeBtn");
   const toggleRun = document.getElementById("toggleRun");
   const stepBtn = document.getElementById("stepBtn");
+  const backBtn = document.getElementById("backBtn");
   const resetBtn = document.getElementById("resetBtn");
   const currentEdge = document.getElementById("currentEdge");
   const mstEdgeCount = document.getElementById("mstEdgeCount");
@@ -481,6 +483,7 @@
     if (state.running) scheduleNext(); else stopTimer();
   });
   stepBtn.addEventListener("click", () => { state.running = false; stopTimer(); advance(); });
+  backBtn.addEventListener("click", () => { state.running = false; stopTimer(); if (state.index > 0) { state.index -= 1; render(); } });
   resetBtn.addEventListener("click", () => { state.running = false; stopTimer(); state.index = 0; render(); });
 
   rebuild();
