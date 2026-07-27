@@ -257,6 +257,7 @@
 
     .distance-list {
       display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
@@ -1025,43 +1026,59 @@
       function renderDistanceList() {
         distanceList.innerHTML = "";
 
-        // Header row
-        const header = document.createElement("div");
-        header.className = "distance-item distance-header";
-        ["终点", "距离", "路径"].forEach((label) => {
-          const span = document.createElement("span");
-          span.textContent = label;
-          header.appendChild(span);
-        });
-        distanceList.appendChild(header);
+        const nodes = state.graph.nodes;
+        const mid = Math.ceil(nodes.length / 2);
+        const leftNodes = nodes.slice(0, mid);
+        const rightNodes = nodes.slice(mid);
 
-        state.graph.nodes.forEach((node) => {
-          const item = document.createElement("div");
-          item.className = "distance-item";
-          if (state.current === node.id) {
-            item.classList.add("active");
-          } else if (state.settled.has(node.id)) {
-            item.classList.add("settled");
-          }
+        function createColumn(nodeList) {
+          const col = document.createElement("div");
+          col.style.display = "grid";
+          col.style.gap = "6px";
+          col.style.alignContent = "start";
 
-          const nodeSpan = document.createElement("strong");
-          nodeSpan.textContent = node.id;
+          const header = document.createElement("div");
+          header.className = "distance-item distance-header";
+          ["终点", "距离", "路径"].forEach((label) => {
+            const span = document.createElement("span");
+            span.textContent = label;
+            header.appendChild(span);
+          });
+          col.appendChild(header);
 
-          const distSpan = document.createElement("span");
-          distSpan.textContent = Number.isFinite(state.distances[node.id])
-            ? String(state.distances[node.id])
-            : "∞";
-          distSpan.style.fontWeight = "700";
+          nodeList.forEach((node) => {
+            const item = document.createElement("div");
+            item.className = "distance-item";
+            if (state.current === node.id) {
+              item.classList.add("active");
+            } else if (state.settled.has(node.id)) {
+              item.classList.add("settled");
+            }
 
-          const pathSpan = document.createElement("span");
-          const path = buildPath(node.id);
-          pathSpan.textContent = path.length > 1 ? path.join(" → ") : "—";
+            const nodeSpan = document.createElement("strong");
+            nodeSpan.textContent = node.id;
 
-          item.appendChild(nodeSpan);
-          item.appendChild(distSpan);
-          item.appendChild(pathSpan);
-          distanceList.appendChild(item);
-        });
+            const distSpan = document.createElement("span");
+            distSpan.textContent = Number.isFinite(state.distances[node.id])
+              ? String(state.distances[node.id])
+              : "∞";
+            distSpan.style.fontWeight = "700";
+
+            const pathSpan = document.createElement("span");
+            const path = buildPath(node.id);
+            pathSpan.textContent = path.length > 1 ? path.join(" → ") : "—";
+
+            item.appendChild(nodeSpan);
+            item.appendChild(distSpan);
+            item.appendChild(pathSpan);
+            col.appendChild(item);
+          });
+
+          return col;
+        }
+
+        distanceList.appendChild(createColumn(leftNodes));
+        distanceList.appendChild(createColumn(rightNodes));
       }
 
       function stopTimer() {
