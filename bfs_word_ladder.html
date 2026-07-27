@@ -355,17 +355,17 @@
 				background: #ffffff;
 			}
 
-			.swatch.visited {
-				background: #e0f2fe;
-				border-color: #0284c7;
+			.swatch.white {
+				background: #ffffff;
+				border-color: #94a3b8;
 			}
-			.swatch.queued {
-				background: #fef3c7;
-				border-color: #d97706;
+			.swatch.gray {
+				background: #cbd5e1;
+				border-color: #6b7280;
 			}
-			.swatch.current {
-				background: #fed7aa;
-				border-color: #c2410c;
+			.swatch.black {
+				background: #6b7280;
+				border-color: #374151;
 			}
 			.swatch.path {
 				background: #dcfce7;
@@ -458,7 +458,7 @@
 					BFS 按层推进，第一次到达目标时经过的路径一定是最短的。
 				</p>
 				<p>
-					图中<strong>蓝色</strong>节点表示已访问过的单词，<strong>黄色</strong>表示已在队列中等待扩展，<strong>橙色</strong>表示当前出队的节点，<strong>红色</strong>边框标记目标单词，<strong>绿色</strong>节点和粗边表示最终找到的最短词梯路径。右侧面板同步显示队列、访问表和
+					图中<strong>灰色</strong>节点表示已发现但仍在边界（队列中）的顶点，<strong>黑色</strong>表示已被完全处理（所有邻接顶点都已被发现），<strong>橙色</strong>高亮当前正在出队处理的顶点，<strong>红色</strong>边框标记目标单词，<strong>绿色</strong>节点和粗边表示最终找到的最短词梯路径。右侧面板同步显示队列、距离表
 					Python 代码行高亮。
 				</p>
 			</section>
@@ -525,13 +525,13 @@
 						></svg>
 						<div class="legend">
 							<span class="legend-item"
-								><span class="swatch visited"></span>已访问</span
+								><span class="swatch white"></span>白色(未发现)</span
 							>
 							<span class="legend-item"
-								><span class="swatch queued"></span>已在队列</span
+								><span class="swatch gray"></span>灰色(边界)</span
 							>
 							<span class="legend-item"
-								><span class="swatch current"></span>当前节点</span
+								><span class="swatch black"></span>黑色(已处理)</span
 							>
 							<span class="legend-item"
 								><span class="swatch path"></span>最短路径</span
@@ -566,43 +566,36 @@
 		<script>
 			(() => {
 				const words = [
+					'foul',
+					'foil',
 					'fool',
-					'pool',
+					'fail',
 					'cool',
-					'tool',
-					'toll',
+					'fall',
+					'pool',
+					'pall',
 					'poll',
 					'pole',
 					'pale',
 					'sale',
 					'sage',
-					'foil',
-					'fail',
-					'fall',
-					'pall',
-					'peal',
-					'seal',
-					'tall',
-					'tale',
-					'gale',
-					'page',
 				];
 
 				const pseudoLines = [
-					'def bfs_word_ladder(start, target):           # 起点入队',
-					'    queue = deque([start])                    # 标记已访问',
-					'    visited = {start}                          # 记录前驱',
-					'    prev = {start: None}                       # BFS 主循环',
-					'    while queue:                               # 队首出队',
-					'        current = queue.popleft()              # 找到目标',
-					'        if current == target:                  # 返回路径',
-					'            return reconstruct(prev, target)',
-					'        for neighbor in graph[current]:        # 遍历邻居',
-					'            if neighbor not in visited:        # 未访问则扩展',
-					'                visited.add(neighbor)',
-					'                prev[neighbor] = current',
-					'                queue.append(neighbor)         # 入队',
-					'    return None',
+					'def bfs(g, start):',
+					'    start.setDistance(0)',
+					'    start.setPred(None)',
+					'    vertQueue = Queue()',
+					'    vertQueue.enqueue(start)',
+					'    while vertQueue.size() > 0:',
+					'        currentVert = vertQueue.dequeue()',
+					'        for nbr in currentVert.getConnections():',
+					'            if nbr.getColor() == "white":',
+					'                nbr.setColor("gray")',
+					'                nbr.setDistance(currentVert.getDistance() + 1)',
+					'                nbr.setPred(currentVert)',
+					'                vertQueue.enqueue(nbr)',
+					'        currentVert.setColor("black")',
 				];
 
 				const sourceSelect = document.getElementById('sourceSelect');
@@ -640,7 +633,7 @@
 					stepCount: 0,
 					stepMessage: '',
 					highlightedEdges: new Set(),
-					activePseudo: 0,
+					activePseudo: 4,
 					history: [],
 				};
 
@@ -757,7 +750,7 @@
 					state.finished = state.source === state.target;
 					state.stepCount = 0;
 					state.highlightedEdges = new Set();
-					state.activePseudo = 0;
+					state.activePseudo = 4;
 
 					words.forEach((word) => {
 						state.previous[word] = null;
@@ -828,7 +821,7 @@
 					state.current = state.queue.shift();
 					state.stepCount += 1;
 					state.highlightedEdges = new Set();
-					state.activePseudo = 5;
+					state.activePseudo = 6;
 
 					if (state.current === state.target) {
 						state.found = true;
@@ -841,10 +834,10 @@
 					}
 
 					const discovered = [];
-					state.activePseudo = 8;
+					state.activePseudo = 7;
 					for (const neighbor of state.adjacency.get(state.current)) {
 						if (!state.visited.has(neighbor)) {
-							state.activePseudo = 9;
+							state.activePseudo = 8;
 							state.visited.add(neighbor);
 							state.previous[neighbor] = state.current;
 							state.distance[neighbor] = state.distance[state.current] + 1;
@@ -1037,12 +1030,12 @@
 							strokeWidth = 3;
 						}
 						if (state.visited.has(word)) {
-							fill = '#e0f2fe';
-							stroke = '#0284c7';
+							fill = '#6b7280';
+							stroke = '#374151';
 						}
 						if (state.queue.includes(word)) {
-							fill = '#fef3c7';
-							stroke = '#d97706';
+							fill = '#cbd5e1';
+							stroke = '#6b7280';
 						}
 						if (word === state.target) {
 							if (!state.visited.has(word) && !state.queue.includes(word)) {
