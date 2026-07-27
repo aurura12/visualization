@@ -199,7 +199,7 @@
     }
     .main {
       display: grid;
-      grid-template-columns: minmax(0, 660px) minmax(360px, 1fr);
+      grid-template-columns: minmax(0, 500px) minmax(480px, 1fr);
       gap: 16px;
       align-items: stretch;
     }
@@ -605,15 +605,17 @@
       function pseudoLinesForCoins(coinsArr) {
         const str = coinsArr.join(", ");
         return [
-          "def greedy_change(amount):",
-          "    picked = []",
-          "    while amount > 0:",
-          `        for coin in [${str}]:`,
-          "            if coin <= amount:",
-          "                picked.append(coin)",
-          "                amount -= coin",
-          "                break",
-          "    return picked"
+          "def greedy_change(coins, change):",
+          "    coins.sort(reverse=True)     # 倒序排列硬币面值列表",
+          "    change_dict = {}",
+          `    for i in coins:               # i from [${str}]`,
+          "        change_dict[i] = change // i   # 求i的个数",
+          "        newchange = change % i         # 新的找零",
+          "        if newchange == 0:             # 已凑够找零",
+          "            break                      # 跳出循环",
+          "        else:",
+          "            change = newchange         # 继续找零",
+          "    return change_dict"
         ];
       }
 
@@ -678,83 +680,76 @@
       }
 
       function buildSteps(target) {
-        const coinList = currentCoins();
+        const coinList = [...currentCoins()].sort((a, b) => b - a);
         const steps = [];
         let remain = target;
-        const picked = [];
+        const coinCounts = {};
+        const skippedCoins = [];
+        coinList.forEach(c => coinCounts[c] = 0);
         const optimal = optimalChange(target);
 
         steps.push({
           remain,
-          picked: picked.slice(),
+          coinCounts: { ...coinCounts },
           activeCoin: null,
           failCoins: [],
-          message: `目标金额为 ${target}，从最大面值开始尝试。`,
-          decision: "先看面值 5 是否可以使用。",
+          message: `目标金额为 ${target}，面值 ${coinList.join(", ")} 已从大到小排序。`,
+          decision: "开始贪心找零，change_dict 初始化为空。",
           status: "未开始",
           pseudo: 2,
-          final: false
+          final: false,
+          totalCount: 0
         });
 
-        while (remain > 0) {
-          let chosen = null;
-          const failCoins = [];
+        for (const coin of coinList) {
+          const count = Math.floor(remain / coin);
+          const newRemain = remain % coin;
 
-          for (const coin of coinList) {
-            if (coin <= remain) {
-              chosen = coin;
-              steps.push({
-                remain,
-                picked: picked.slice(),
-                activeCoin: coin,
-                failCoins: failCoins.slice(),
-                message: `当前剩余金额为 ${remain}，从大到小尝试面值。`,
-                decision: `面值 ${coin} 不超过剩余金额，因此贪心法立即选择它。`,
-                status: "进行中",
-                pseudo: 4,
-                final: false
-              });
-              break;
-            }
-            failCoins.push(coin);
+          if (count > 0) {
+            coinCounts[coin] = count;
             steps.push({
               remain,
-              picked: picked.slice(),
+              coinCounts: { ...coinCounts },
               activeCoin: coin,
-              failCoins: failCoins.slice(),
-              message: `当前剩余金额为 ${remain}，面值 ${coin} 过大，不能使用。`,
-              decision: `跳过 ${coin}，继续尝试更小面值。`,
+              failCoins: skippedCoins.slice(),
+              message: `当前剩余金额为 ${remain}，${coin} × ${count} = ${coin * count}，取 ${count} 枚。`,
+              decision: `${coin} // ${remain} = ${count}，目标金额减少 ${coin * count}。`,
+              status: newRemain === 0 ? "已完成" : "进行中",
+              pseudo: newRemain === 0 ? 7 : 4,
+              final: false,
+              totalCount: Object.values(coinCounts).reduce((a, b) => a + b, 0)
+            });
+            remain = newRemain;
+            if (remain === 0) break;
+          } else {
+            skippedCoins.push(coin);
+            steps.push({
+              remain,
+              coinCounts: { ...coinCounts },
+              activeCoin: coin,
+              failCoins: skippedCoins.slice(),
+              message: `当前剩余金额为 ${remain}，${coin} 过大，${coin} // ${remain} = 0，跳过。`,
+              decision: `newchange = ${remain} % ${coin} = ${remain}，change = ${remain}，继续下一面值。`,
               status: "进行中",
-              pseudo: 3,
-              final: false
+              pseudo: 9,
+              final: false,
+              totalCount: Object.values(coinCounts).reduce((a, b) => a + b, 0)
             });
           }
-
-          picked.push(chosen);
-          remain -= chosen;
-          steps.push({
-            remain,
-            picked: picked.slice(),
-            activeCoin: chosen,
-            failCoins: [],
-            message: `选择面值 ${chosen} 后，剩余金额变为 ${remain}。`,
-            decision: `已选硬币：${picked.join(" + ")}。`,
-            status: remain === 0 ? "已完成" : "进行中",
-            pseudo: 6,
-            final: remain === 0
-          });
         }
 
+        const total = Object.values(coinCounts).reduce((a, b) => a + b, 0);
         steps.push({
           remain: 0,
-          picked: picked.slice(),
+          coinCounts: { ...coinCounts },
           activeCoin: null,
-          failCoins: [],
+          failCoins: skippedCoins.slice(),
           message: "贪心找零结束，可以和最优解进行比较。",
-          decision: `贪心结果：${picked.join(" + ")}，共 ${picked.length} 枚。`,
+          decision: `贪心结果：${Object.entries(coinCounts).filter(([_, v]) => v > 0).map(([c, v]) => `${c}×${v}`).join(" + ")}，共 ${total} 枚。`,
           status: "已完成",
-          pseudo: 8,
+          pseudo: 10,
           final: true,
+          totalCount: total,
           optimal
         });
 
@@ -771,16 +766,29 @@
           const card = document.createElement("div");
           card.className = "coin-card";
           if (coin === step.activeCoin) card.classList.add("active");
-          if (step.picked.includes(coin)) card.classList.add("picked");
-          if (step.failCoins.includes(coin)) card.classList.add("fail");
+          if (step.coinCounts && step.coinCounts[coin] > 0 && coin !== step.activeCoin) card.classList.add("picked");
+          if (step.failCoins && step.failCoins.includes(coin)) card.classList.add("fail");
 
           const face = document.createElement("div");
           face.className = "coin-face";
           face.textContent = coin;
 
+          const count = step.coinCounts ? step.coinCounts[coin] : 0;
           const meta = document.createElement("div");
           meta.className = "coin-meta";
-          meta.innerHTML = `面值 ${coin}<br>${coin <= step.remain ? "可以尝试" : "当前过大"}`;
+          if (count > 0 && coin !== step.activeCoin) {
+            meta.innerHTML = `面值 ${coin}<br>已选 ${count} 枚`;
+          } else if (coin === step.activeCoin && step.coinCounts && step.coinCounts[coin] > 0) {
+            meta.innerHTML = `面值 ${coin}<br>取 ${count} 枚`;
+          } else if (coin === step.activeCoin && step.failCoins && step.failCoins.includes(coin)) {
+            meta.innerHTML = `面值 ${coin}<br>跳过`;
+          } else if (step.failCoins && step.failCoins.includes(coin)) {
+            meta.innerHTML = `面值 ${coin}<br>跳过`;
+          } else if (coin === step.activeCoin) {
+            meta.innerHTML = `面值 ${coin}<br>正在计算`;
+          } else {
+            meta.innerHTML = `面值 ${coin}<br>等待`;
+          }
 
           card.appendChild(face);
           card.appendChild(meta);
@@ -790,17 +798,19 @@
 
       function renderPicked(step) {
         pickedStrip.innerHTML = "";
-        if (!step.picked.length) {
+        const counts = step.coinCounts || {};
+        const entries = Object.entries(counts).filter(([_, v]) => v > 0);
+        if (entries.length === 0) {
           const empty = document.createElement("span");
           empty.className = "picked-chip";
           empty.textContent = "暂无";
           pickedStrip.appendChild(empty);
           return;
         }
-        step.picked.forEach((coin, index) => {
+        entries.forEach(([coin, count]) => {
           const chip = document.createElement("span");
           chip.className = "picked-chip";
-          chip.textContent = `第 ${index + 1} 枚：${coin}`;
+          chip.textContent = `${coin} × ${count}`;
           pickedStrip.appendChild(chip);
         });
       }
@@ -830,12 +840,16 @@
           return;
         }
 
-        const greedyText = `贪心解：${step.picked.join(" + ")}，共 ${step.picked.length} 枚。`;
+        const counts = step.coinCounts || {};
+        const greedyEntries = Object.entries(counts).filter(([_, v]) => v > 0);
+        const greedyStr = greedyEntries.map(([c, v]) => `${c}×${v}`).join(" + ");
+        const greedyTotal = step.totalCount || 0;
+        const greedyText = `贪心解：${greedyStr}，共 ${greedyTotal} 枚。`;
         const optimal = finalStep.optimal;
         const optimalText = `最优解：${optimal.picked.join(" + ")}，共 ${optimal.count} 枚。`;
-        const conclusion = optimal.count === step.picked.length
+        const conclusion = optimal.count === greedyTotal
           ? "本例中贪心法得到的就是最优解。"
-          : `本例中贪心法没有得到最少硬币数（差 ${step.picked.length - optimal.count} 枚），贪心不一定全局最优。`;
+          : `本例中贪心法没有得到最少硬币数（差 ${greedyTotal - optimal.count} 枚），贪心不一定全局最优。`;
         resultText.innerHTML = `${greedyText}<br>${optimalText}<br>${conclusion}`;
       }
 
@@ -850,7 +864,7 @@
         remainAmountBox.textContent = String(step.remain);
         choiceStat.textContent = step.activeCoin === null ? "-" : String(step.activeCoin);
         remainStat.textContent = String(step.remain);
-        coinCountStat.textContent = String(step.picked.length);
+        coinCountStat.textContent = String(step.totalCount || 0);
         statusStat.textContent = state.running ? "自动播放" : step.status;
         stepText.textContent = step.message;
         decisionText.textContent = step.decision;

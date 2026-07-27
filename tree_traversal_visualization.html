@@ -548,28 +548,25 @@
 
       const pythonCode = {
         preorder: [
-          "def preorder(node):",
-          "    if node is None:",
-          "        return",
-          "    visit(node)",
-          "    preorder(node.left)",
-          "    preorder(node.right)"
+          "def preorder(tree):",
+          "    if tree != None:",
+          "        print(tree.getRootVal())",
+          "        preorder(tree.getLeftChild())",
+          "        preorder(tree.getRightChild())"
         ],
         inorder: [
-          "def inorder(node):",
-          "    if node is None:",
-          "        return",
-          "    inorder(node.left)",
-          "    visit(node)",
-          "    inorder(node.right)"
+          "def inorder(tree):",
+          "    if tree != None:",
+          "        inorder(tree.getLeftChild())",
+          "        print(tree.getRootVal())",
+          "        inorder(tree.getRightChild())"
         ],
         postorder: [
-          "def postorder(node):",
-          "    if node is None:",
-          "        return",
-          "    postorder(node.left)",
-          "    postorder(node.right)",
-          "    visit(node)"
+          "def postorder(tree):",
+          "    if tree != None:",
+          "        postorder(tree.getLeftChild())",
+          "        postorder(tree.getRightChild())",
+          "        print(tree.getRootVal())"
         ]
       };
 
@@ -652,9 +649,9 @@
         const steps = [];
 
         const lineMap = {
-          preorder: { visit: 3, left: 4, right: 5 },
-          inorder: { left: 3, visit: 4, right: 5 },
-          postorder: { left: 3, right: 4, visit: 5 }
+          preorder: { visit: 2, left: 3, right: 4 },
+          inorder: { left: 2, visit: 3, right: 4 },
+          postorder: { left: 2, right: 3, visit: 4 }
         }[mode];
 
         const callStack = [];
