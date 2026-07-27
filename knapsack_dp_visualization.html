@@ -101,7 +101,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1.2fr 1fr 1fr;
+      grid-template-columns: 1.2fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
       align-items: start;
@@ -219,8 +219,7 @@
     .table-shell {
       position: relative;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       border: 1px solid var(--line);
       background: #fff;
       box-shadow: var(--shadow);
@@ -307,14 +306,11 @@
     }
 
     .legend {
-      position: absolute;
-      top: 14px;
-      right: 14px;
       display: flex;
       flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 10px;
-      margin: 0;
+      justify-content: center;
+      gap: 12px;
+      margin: 0 0 8px;
       padding: 6px 10px;
       font-size: 12px;
       color: var(--muted);
@@ -391,6 +387,53 @@
       border-left-color: #fdba74;
     }
 
+    .table-step-info {
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+      padding-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1f2937;
+    }
+
+    .table-step-info h4 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .table-step-info .info-text {
+      min-height: 40px;
+    }
+
+    .table-desc {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      margin: 6px 0 8px;
+    }
+
+    .table-desc var {
+      font-style: italic;
+      color: #2563eb;
+    }
+
+    .table-info-bar {
+      font-size: 13px;
+      color: #1f2937;
+      text-align: center;
+      margin: 0 0 6px;
+      padding: 6px 12px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 4px;
+      line-height: 1.6;
+    }
+
     .line-number {
       color: #94a3b8;
       text-align: right;
@@ -434,14 +477,19 @@
 
     <section class="info-card">
       <h2>说明</h2>
-      <p>0/1 背包问题：给定容量为 C 的背包和 n 件物品，每件物品有重量 w<sub>i</sub> 和价值 v<sub>i</sub>，如何选择装入的物品使总价值最大？</p>
-      <p><strong>动态规划的核心思想：</strong>将原问题拆解为规模更小的子问题，通过记录子问题的最优解来避免重复计算。定义 V[i][j] 表示"在前 i 件物品中挑选，装入容量为 j 的背包，能获得的最大价值"。那么 V[i][j] 的递推关系为：</p>
-      <p style="padding-left:20px;font-family:monospace;font-size:14px;line-height:1.8;">
-        V[i][j] = V[i‑1][j]（容量不足，无法装入第 i 件物品）<br>
-        V[i][j] = max(V[i‑1][j], V[i‑1][j‑w<sub>i</sub>] + v<sub>i</sub>)（容量充足，选择装或不装中更优者）
-      </p>
-      <p>表格的行对应物品（行 1～5 的权重/价值已在表头标注），列对应背包容量 0～10。填表从第 1 行开始逐行逐列进行，每一步的决策只依赖上一行的结果——这就是"动态规划"中"状态转移"的直观体现。最终 V[5][10] 就是全局最优解（本示例为 15）。</p>
-      <p>本页面使用容量 C=10、5 件物品的重量为 {2, 2, 6, 5, 4}、价值为 {6, 3, 5, 4, 6} 作为示例。页面会逐格演示填表过程：<strong>黄色</strong>高亮当前正在计算的格子；<strong>橙色</strong>标记「不装入」的参考来源（V[i-1][j]）；<strong>紫色</strong>标记「装入」的参考来源（V[i-1][j-w] + v）；<strong>绿色</strong>格子表示回溯路径上被选中的物品；<strong>蓝色</strong>格子表示容量不足直接继承上一行。侧面板同步显示当前决策依据和对应的 Python 代码行高亮。</p>
+      <p><strong>0/1 背包问题：</strong>给定容量 <var>C</var> 的背包和 <var>n</var> 件物品，物品 <var>i</var> 有重量 <var>w<sub>i</sub></var> 和价值 <var>v<sub>i</sub></var>。每种物品只能选择"装入"或"不装入"（不能拆分、不能重复装）。目标是使背包中物品的总价值最大。</p>
+
+      <p><strong>动态规划求解：</strong>定义 <var>V</var>(<var>i</var>, <var>j</var>) 表示"在前 <var>i</var> 件物品中挑选，装入容量为 <var>j</var> 的背包，能获得的最大价值"。边界条件：<var>V</var>(<var>i</var>, 0) = <var>V</var>(0, <var>j</var>) = 0。</p>
+
+      <p><strong>状态转移方程（核心公式）：</strong></p>
+      <ul style="font-size:13px;line-height:1.8;padding-left:20px;color:#1f2937;">
+        <li><strong>容量不足（<var>j</var> &lt; <var>w<sub>i</sub></var>）：</strong><var>V</var>(<var>i</var>, <var>j</var>) = <var>V</var>(<var>i</var>−1, <var>j</var>)——无法装入，继承上一行</li>
+        <li><strong>容量充足（<var>j</var> ≥ <var>w<sub>i</sub></var>）：</strong><var>V</var>(<var>i</var>, <var>j</var>) = max{<var>V</var>(<var>i</var>−1, <var>j</var>), <var>V</var>(<var>i</var>−1, <var>j</var>−<var>w<sub>i</sub></var>) + <var>v<sub>i</sub></var>}——取"不装"和"装"中价值更大者</li>
+      </ul>
+
+      <p><strong>本示例：</strong><var>C</var> = 10，5 件物品重量 {2, 2, 6, 5, 4}，价值 {6, 3, 5, 4, 6}。填表从第 1 行逐行逐列进行，每个格的值只依赖上一行。填完后从 <var>V</var>(5, 10) 回溯得到最优解（选物品 1、2、4，总价值 15）。</p>
+
+      <p><strong>颜色说明：</strong><span style="background:#fef3c7;padding:0 6px;border:1px solid #f59e0b;">黄色</span>当前计算格；<span style="background:#ffedd5;padding:0 6px;">橙色</span>不装来源；<span style="background:#f3e8ff;padding:0 6px;">紫色</span>装来源；<span style="background:#dcfce7;padding:0 6px;">绿色</span>回溯选中；<span style="background:#eff6ff;padding:0 6px;">蓝色</span>容量不足继承。</p>
     </section>
 
     <section class="controls">
@@ -454,16 +502,6 @@
             <button id="backButton" type="button">后退</button>
             <button id="resetButton" type="button">重置</button>
             <button id="jumpButton" type="button">跳到回溯</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="control">
-        <h3>每秒步数</h3>
-        <div class="content">
-          <div class="slider-wrap">
-            <input id="speedInput" type="range" min="1" max="8" step="1" value="3" />
-            <div id="speedValue" class="slider-value">3 步/秒</div>
           </div>
         </div>
       </div>
@@ -504,7 +542,6 @@
 
     <section class="main">
       <div class="table-shell">
-        <table id="dpTable"></table>
         <div class="legend">
           <span class="legend-item"><span class="swatch active"></span>当前状态格</span>
           <span class="legend-item"><span class="swatch compare"></span>不装来源格</span>
@@ -513,23 +550,27 @@
           <span class="legend-item"><span class="swatch trace-active"></span>回溯当前焦点</span>
           <span class="legend-item"><span class="swatch skip"></span>直接继承</span>
         </div>
+        <div id="remainingInfo" class="table-info-bar">等待开始。</div>
+        <div class="table-desc">行 <var>i</var>：前 <var>i</var> 件物品 &nbsp;&nbsp;|&nbsp;&nbsp; 列 <var>j</var>：背包容量 <var>j</var></div>
+        <table id="dpTable"></table>
+      <div class="table-step-info">
+        <div>
+          <h4>过程说明</h4>
+          <div id="stepText" class="info-text"></div>
+        </div>
+        <div>
+          <h4>当前决策</h4>
+          <div id="choiceText" class="info-text">等待开始。</div>
+        </div>
+        <div>
+          <h4>回溯结果</h4>
+          <div id="pickedText" class="info-text">尚未开始回溯。</div>
+        </div>
+      </div>
       </div>
 
       <aside class="side-panel">
-        <h3>过程说明</h3>
-        <div id="stepText" class="step-text"></div>
-
-        <div class="choice-box">
-          <h3>当前决策</h3>
-          <div id="choiceText">等待开始。</div>
-        </div>
-
-        <div class="path-box">
-          <h3>回溯结果</h3>
-          <div id="pickedText">尚未开始回溯。</div>
-        </div>
-
-        <h3 class="code-title">Python 代码</h3>
+        <h3>Python 代码</h3>
         <div id="pseudoList" class="pseudo"></div>
       </aside>
     </section>
@@ -547,17 +588,24 @@
       const capacity = 10;
 
       const pseudoLines = [
-        "def knapsack_dp(w, v, C):",
+        "def knapsack_dp(w, p, C):",
         "    n = len(w)",
-        "    V = [[0]*(C+1) for _ in range(n+1)]",
+        "    Load = [[0]*(C+1) for _ in range(n+1)]",
         "    for i in range(1, n+1):",
         "        for j in range(C+1):",
-        "            if j < w[i-1]:",
-        "                V[i][j] = V[i-1][j]",
+        "            if j >= w[i-1] and \\",
+        "               Load[i-1][j-w[i-1]] + p[i-1] > Load[i-1][j]:",
+        "                Load[i][j] = Load[i-1][j-w[i-1]] + p[i-1]",
         "            else:",
-        "                V[i][j] = max(V[i-1][j],",
-        "                    V[i-1][j-w[i-1]] + v[i-1])",
-        "    return V[n][C]"
+        "                Load[i][j] = Load[i-1][j]",
+        "    # Backtrack: 逆推找出被选中的物品",
+        "    x = [0]*n              # 记录选择，1表示选中",
+        "    j = C                  # 从最终容量开始逆推",
+        "    for i in range(n, 0, -1):    # i从n到1",
+        "        if Load[i][j] > Load[i-1][j]:  # 第i件被选中",
+        "            x[i-1] = 1      # 标记选中",
+        "            j -= w[i-1]     # 减去重量，继续逆推",
+        "    return Load[n][C]"
       ];
 
       const toggleRunButton = document.getElementById("toggleRunButton");
@@ -565,8 +613,6 @@
       const backButton = document.getElementById("backButton");
       const resetButton = document.getElementById("resetButton");
       const jumpButton = document.getElementById("jumpButton");
-      const speedInput = document.getElementById("speedInput");
-      const speedValue = document.getElementById("speedValue");
       const phaseSelect = document.getElementById("phaseSelect");
       const progressStat = document.getElementById("progressStat");
       const stateStat = document.getElementById("stateStat");
@@ -576,6 +622,7 @@
       const stepText = document.getElementById("stepText");
       const choiceText = document.getElementById("choiceText");
       const pickedText = document.getElementById("pickedText");
+      const remainingInfo = document.getElementById("remainingInfo");
       const pseudoList = document.getElementById("pseudoList");
 
       const state = {
@@ -606,7 +653,7 @@
           message: "初始化第 0 行和第 0 列，表示没有物品或容量为 0 时的最优值为 0。",
           choice: "当前还没有开始正式填表。",
           pickedItems: [],
-          pseudo: 0
+          pseudo: 2
         });
 
         for (let i = 1; i <= items.length; i += 1) {
@@ -630,7 +677,7 @@
                 message: `当前处理第 ${item.id} 件物品，容量 j=${j} 小于重量 ${item.weight}，所以不能装入。`,
                 choice: `只能继承上一行的值 V[${i - 1}][${j}] = ${dp[i - 1][j]}。`,
                 pickedItems: [],
-                pseudo: 5
+                pseudo: 9
               });
             } else {
               const skipValue = dp[i - 1][j];
@@ -655,7 +702,7 @@
                   ? `装入更优：max(${skipValue}, ${dp[i - 1][j - item.weight]} + ${item.value}) = ${takeValue}。`
                   : `不装更优：max(${skipValue}, ${dp[i - 1][j - item.weight]} + ${item.value}) = ${skipValue}。`,
                 pickedItems: [],
-                pseudo: take ? 8 : 6
+                pseudo: take ? 7 : 9
               });
             }
           }
@@ -682,7 +729,7 @@
           message: `填表完成，从 V[${ti}][${tj}] = ${dp[ti][tj]} 开始回溯。`,
           choice: "判断每一行是否真的选择了当前物品。",
           pickedItems: picked.slice(),
-          pseudo: 9
+          pseudo: 13
         });
 
         while (ti > 0 && tj >= 0) {
@@ -708,7 +755,7 @@
               message: `V[${ti + 1}][${tj + item.weight}] > V[${ti}][${tj + item.weight}]，说明第 ${item.id} 件物品被选中。`,
               choice: `选择物品 ${item.id} 后，容量回退到 ${tj}。`,
               pickedItems: picked.slice(),
-              pseudo: 8
+              pseudo: 15
             });
           } else {
             ti -= 1;
@@ -729,7 +776,7 @@
               message: `V[${ti + 1}][${tj}] = V[${ti}][${tj}]，说明第 ${item.id} 件物品没有被选中。`,
               choice: `跳过物品 ${item.id}，继续查看上一行。`,
               pickedItems: picked.slice(),
-              pseudo: 6
+              pseudo: 14
             });
           }
         }
@@ -750,7 +797,7 @@
           message: "回溯结束，已经得到最优装包方案。",
           choice: `最终选择物品：${picked.slice().reverse().join("、")}，总价值为 ${dp[items.length][capacity]}。`,
           pickedItems: picked.slice(),
-          pseudo: 9
+          pseudo: 17
         });
 
         return steps;
@@ -845,7 +892,22 @@
         pickedText.textContent = step.pickedItems.length
           ? `已选物品：${step.pickedItems.slice().reverse().join("、")}`
           : (step.phase === "trace" ? "当前还没有确定被选中的物品。" : "填表阶段暂不回溯。");
-        speedValue.textContent = `${speedInput.value} 步/秒`;
+        if (step.phase === "fill") {
+          if (step.i === 0) {
+            remainingInfo.textContent = "初始化状态，尚无物品参与决策。";
+          } else {
+            const cur = items[step.i - 1];
+            const rest = items.slice(step.i).map(it => it.id).join("、");
+            remainingInfo.innerHTML = `当前：第 ${cur.id} 件（重 ${cur.weight}，值 ${cur.value}）`
+              + `<br>容量：${step.j} / ${capacity}`
+              + (rest ? `<br>剩余物品：${rest}` : `<br>剩余物品：无`);
+          }
+        } else {
+          const remainingCap = step.j;
+          remainingInfo.innerHTML = `回溯位置：V[${step.i}][${step.j}]`
+            + `<br>剩余容量：${remainingCap}`
+            + (step.pickedItems.length ? `<br>已选：${step.pickedItems.slice().reverse().join("、")}` : "");
+        }
         toggleRunButton.textContent = state.running ? "暂停" : "开始";
       }
 
@@ -871,11 +933,10 @@
       function scheduleNext() {
         stopTimer();
         if (!state.running) return;
-        const delay = Math.max(120, Math.round(1000 / Number(speedInput.value)));
         state.timer = setTimeout(() => {
           advanceStep();
           if (state.running) scheduleNext();
-        }, delay);
+        }, 1000);
       }
 
       function reset() {
@@ -922,11 +983,6 @@
           state.index = idx;
           render();
         }
-      });
-
-      speedInput.addEventListener("input", () => {
-        render();
-        if (state.running) scheduleNext();
       });
 
       phaseSelect.addEventListener("change", () => {

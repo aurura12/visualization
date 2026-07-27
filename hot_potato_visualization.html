@@ -372,6 +372,35 @@
 				text-align: center;
 				min-width: 56px;
 				transition: all 0.2s;
+				position: relative;
+			}
+			.queue-vis-box:first-child:not(:only-child)::before {
+				content: "队首";
+				position: absolute;
+				top: -20px;
+				left: 50%;
+				transform: translateX(-50%);
+				font-size: 11px;
+				font-weight: 700;
+				color: #c2410c;
+				white-space: nowrap;
+				background: #fff;
+				padding: 0 4px;
+				line-height: 1;
+			}
+			.queue-vis-box:last-child:not(:only-child)::before {
+				content: "队尾";
+				position: absolute;
+				top: -20px;
+				left: 50%;
+				transform: translateX(-50%);
+				font-size: 11px;
+				font-weight: 700;
+				color: #1d4ed8;
+				white-space: nowrap;
+				background: #fff;
+				padding: 0 4px;
+				line-height: 1;
 			}
 			.queue-vis-box.active {
 				background: #fed7aa;
